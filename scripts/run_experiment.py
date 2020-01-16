@@ -1,3 +1,4 @@
+import argparse
 from dotmap import DotMap
 
 from slmpc.misc.experiment import Experiment
@@ -31,9 +32,14 @@ def config(env_name, controller_type):
 	return exp_cfg
 
 if __name__ == '__main__':
-	env_name = "pointbot"
-	controller_type = "lmpc_expect"
-	exp_cfg = config(env_name, controller_type)
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-env_name', type=str, default="pointbot",
+						help='Environment name: select from [pointbot]')
+	parser.add_argument('-ctrl', type=str, default="random",
+						help='Controller name: select from [random, lmpc]')
+	args = parser.parse_args()
+
+	exp_cfg = config(args.env_name, args.ctrl)
 	experiment = Experiment(exp_cfg.controller, exp_cfg.env, exp_cfg)
 	experiment.run()
 	experiment.plot_results()
