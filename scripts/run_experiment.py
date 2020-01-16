@@ -11,6 +11,8 @@ def config():
 	exp_cfg.num_iterations = 10
 	exp_cfg.controller_type = "lmpc_expect"
 	exp_cfg.env = env = PointBot()
+	exp_cfg.save_dir = "pointbot"
+	exp_cfg.log_all_data = True
 
 	if exp_cfg.controller_type == "random":
 		exp_cfg.controller = RandomController(env)

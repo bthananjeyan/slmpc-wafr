@@ -1,3 +1,8 @@
+from datetime import datetime
+import os
+import os.path as osp
+import pickle
+
 import numpy as np
 
 class Experiment:
@@ -10,9 +15,22 @@ class Experiment:
 		self.samples_per_iteration = self.exp_cfg.samples_per_iteration
 		self.num_iterations = self.exp_cfg.num_iterations
 
+		self.log_all_data = exp_cfg.log_all_data
+		self.save_dir = self.exp_cfg.save_dir
+		if not os.path.exists(self.save_dir):
+			os.makedirs(self.save_dir)
+		self.save_dir = osp.join(self.save_dir, datetime.now().strftime("%Y-%m-%d--%H:%M:%S"))
+		os.makedirs(self.save_dir)
+
 	def reset(self):
 		self.all_samples = []
 		self.mean_costs = []
+
+	def dump_logs(self):
+		np.save(osp.join(self.save_dir, "mean_costs.npy"), self.mean_costs)
+		if self.log_all_data:
+			with open(osp.join(self.save_dir, "samples.pkl"), "wb") as f:
+				pickle.dump(self.all_samples, f)
 
 	def sample(self):
 		data = {
@@ -44,6 +62,8 @@ class Experiment:
 			mean_cost = np.mean([s['total_cost'] for s in samples])
 			self.mean_costs.append(mean_cost)
 			print("Average Cost: %f"%mean_cost)
+
+			self.dump_logs()
 
 	@property
 	def stats(self):
