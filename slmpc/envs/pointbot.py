@@ -1,8 +1,8 @@
 """
 A robot that can exert force in cardinal directions. The robot's goal is to
-reach the origin and it experiences zero-mean Gaussian Noise and air resistance
-proportional to its velocity. State representation is (x, vx, y, vy). Action
-representation is (fx, fy), and mass is assumed to be 1.
+reach the origin and it experiences zero-mean Gaussian Noise. State
+representation is (x, vx, y, vy). Action representation is (fx, fy),
+and mass is assumed to be 1.
 """
 
 import os
@@ -45,6 +45,7 @@ class PointBot(Env, utils.EzPickle):
         self.action_space = Box(-np.ones(2) * MAX_FORCE, np.ones(2) * MAX_FORCE)
         self.observation_space = Box(-np.ones(4) * np.float('inf'), np.ones(4) * np.float('inf'))
         self.start_state = START_STATE
+        self.name = "pointbot"
 
     def set_mode(self, mode):
         if self.mode == 1:
