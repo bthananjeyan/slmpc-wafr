@@ -10,7 +10,6 @@ import pickle
 
 import os.path as osp
 import numpy as np
-import tensorflow as tf
 from gym import Env
 from gym import utils
 from gym.spaces import Box
@@ -45,31 +44,21 @@ class PointBot(Env, utils.EzPickle):
         self.horizon = HORIZON
         self.action_space = Box(-np.ones(2) * MAX_FORCE, np.ones(2) * MAX_FORCE)
         self.observation_space = Box(-np.ones(4) * np.float('inf'), np.ones(4) * np.float('inf'))
-        # self.obstacle = ComplexObstacle([[-30, -20], [-20, 20]])
         self.start_state = START_STATE
 
     def set_mode(self, mode):
-        self.mode = mode
-        self.obstacle = OBSTACLE[mode]
         if self.mode == 1:
             self.start_state = [-100, 0, 0, 0]
-
-    def process_action(self, state, action):
-        return action
 
     def step(self, a):
         a = process_action(a)
         next_state = self._next_state(self.state, a)
         cur_cost = self.step_cost(self.state, a)
         self.cost.append(cur_cost)
-        if not self.obstacle(self.state):
-            self.state = next_state
+        self.state = next_state
         self.time += 1
         self.hist.append(self.state)
         self.done = HORIZON <= self.time
-        if self.done and not self.is_stable(self.state):
-            self.cost[-1] += FAILURE_COST
-            cur_cost += FAILURE_COST
         return self.state, cur_cost, self.done, {}
 
     def reset(self):
@@ -84,13 +73,7 @@ class PointBot(Env, utils.EzPickle):
         return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * np.random.randn(len(s))
 
     def step_cost(self, s, a):
-        if HARD_MODE:
-            return int(np.linalg.norm(np.subtract(GOAL_STATE, s)) > GOAL_THRESH) + self.obstacle(s)
         return np.linalg.norm(np.subtract(GOAL_STATE, s))
-
-    def collision_cost(self, obs):
-        return self.obstacle(obs)
-
 
     def values(self):
         return np.cumsum(np.array(self.cost)[::-1])[::-1]
