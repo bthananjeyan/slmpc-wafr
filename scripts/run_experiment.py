@@ -2,8 +2,7 @@ from dotmap import DotMap
 
 from slmpc.misc.experiment import Experiment
 from slmpc.envs.pointbot import PointBot
-from slmpc.controllers.random import RandomController
-from slmpc.controllers.lmpc import LMPC
+from slmpc.controllers import LMPC, RandomController
 
 def config():
 	exp_cfg = DotMap
@@ -28,5 +27,5 @@ if __name__ == '__main__':
 	exp_cfg = config()
 	experiment = Experiment(exp_cfg.controller, exp_cfg.env, exp_cfg)
 	experiment.run()
-	print(experiment.plot_results())
+	experiment.plot_results()
 	
