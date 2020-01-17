@@ -64,7 +64,7 @@ class MyLinearizedSystem:
         return self.K
 
 class CartPole(Env, utils.EzPickle):
-    def __init__(self):
+    def __init__(self, cem_env=False):
         utils.EzPickle.__init__(self)
         self.hist = self.cost = self.done = self.time = self.state = None
         self.ss = MyLinearizedSystem()
@@ -86,6 +86,7 @@ class CartPole(Env, utils.EzPickle):
         self.dt = DT
         self.t = 0
         self.name = "cartpole"
+        self.cem_env = cem_env
 
     def step(self, a):
         a = process_action(a)
@@ -98,6 +99,8 @@ class CartPole(Env, utils.EzPickle):
         self.t += self.dt
         self.hist.append(self.state)
         self.done = HORIZON <= self.time
+        if not self.cem_env:
+            print("Real State: ", self.state, "Cost: ", cur_cost)
         return self.state, cur_cost, self.done, {}
 
     def reset(self):
@@ -108,9 +111,18 @@ class CartPole(Env, utils.EzPickle):
         self.hist = [self.state]
         return self.state
 
+    def set_state(self, s):
+        self.state = s
+
+    def get_hist(self):
+        return self.hist
+
+    def get_costs(self):
+        return self.cost
+
     # TODO: make this not dense cost at some point
     def step_cost(self, s, a):
-        return (1 - np.sin(s[2]))**2
+        return np.abs(s[2] - GOAL_STATE[2])
 
     def values(self):
         return np.cumsum(np.array(self.cost)[::-1])[::-1]
@@ -183,6 +195,8 @@ if __name__=="__main__":
     teacher = env.teacher()
     rollout = teacher.get_rollout()
     obs_rollout = rollout["obs"]
+    acs_rollout = rollout["ac"]
+    print("ACS ROLLOUT", acs_rollout)
 
     for i in range(len(obs_rollout)):
         t = DT * i

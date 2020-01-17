@@ -9,9 +9,12 @@ from slmpc.controllers import LMPC, RandomController
 def pointbot_config(exp_cfg):
 	exp_cfg.env = PointBot()
 	exp_cfg.save_dir = "logs/pointbot"
+	exp_cfg.soln_mode = "exact"
 
 def cartpole_config(exp_cfg):
 	exp_cfg.env = CartPole()
+	exp_cfg.cem_env = CartPole(cem_env=True) # TODO: wrap this in proper abstraction
+	exp_cfg.soln_mode = "cem"
 	exp_cfg.save_dir = "logs/cartpole"
 
 def config(env_name, controller_type):
@@ -30,9 +33,9 @@ def config(env_name, controller_type):
 		raise Exception("Unsupported environment.")
 
 	if exp_cfg.controller_type == "random":
-		exp_cfg.controller = RandomController(exp_cfg.env)
+		exp_cfg.controller = RandomController(exp_cfg)
 	elif exp_cfg.controller_type == "lmpc_expect":
-		exp_cfg.controller = LMPC(exp_cfg.env)
+		exp_cfg.controller = LMPC(exp_cfg)
 	else:
 		raise Exception("Unsupported controller.")
 

@@ -6,7 +6,7 @@ from .safe_set import SafeSet
 class RandomController(Controller):
 
 	def __init__(self, env):
-		self.env = env
+		self.env = cfg.env
 
 	def act(self, state):
 		# TODO: set up and solve problem in cvxpy
