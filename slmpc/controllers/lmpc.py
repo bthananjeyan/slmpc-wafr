@@ -27,6 +27,10 @@ class LMPC(Controller):
 def pointbot_act(state, env):
 	return env.sample()
 
+def cartpole_act(state, env):
+	return env.sample()
+
 ACT_FNS = {
-	'pointbot': pointbot_act
+	'pointbot': pointbot_act,
+	'cartpole': cartpole_act
 }

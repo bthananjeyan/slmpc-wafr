@@ -3,11 +3,16 @@ from dotmap import DotMap
 
 from slmpc.misc.experiment import Experiment
 from slmpc.envs.pointbot import PointBot
+from slmpc.envs.cartpole import CartPole
 from slmpc.controllers import LMPC, RandomController
 
 def pointbot_config(exp_cfg):
-	exp_cfg.env = env = PointBot()
+	exp_cfg.env = PointBot()
 	exp_cfg.save_dir = "logs/pointbot"
+
+def cartpole_config(exp_cfg):
+	exp_cfg.env = CartPole()
+	exp_cfg.save_dir = "logs/cartpole"
 
 def config(env_name, controller_type):
 	exp_cfg = DotMap
@@ -19,6 +24,8 @@ def config(env_name, controller_type):
 
 	if exp_cfg.env_name == "pointbot":
 		pointbot_config(exp_cfg)
+	elif exp_cfg.env_name == "cartpole":
+		cartpole_config(exp_cfg)
 	else:
 		raise Exception("Unsupported environment.")
 
@@ -34,9 +41,9 @@ def config(env_name, controller_type):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-env_name', type=str, default="pointbot",
-						help='Environment name: select from [pointbot]')
+						help='Environment name: select from [pointbot, cartpole]')
 	parser.add_argument('-ctrl', type=str, default="random",
-						help='Controller name: select from [random, lmpc]')
+						help='Controller name: select from [random, lmpc_expect]')
 	args = parser.parse_args()
 
 	exp_cfg = config(args.env_name, args.ctrl)

@@ -73,6 +73,7 @@ class PointBot(Env, utils.EzPickle):
     def _next_state(self, s, a):
         return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * np.random.randn(len(s))
 
+    # TODO: make this not dense cost at some point
     def step_cost(self, s, a):
         return np.linalg.norm(np.subtract(GOAL_STATE, s))
 
