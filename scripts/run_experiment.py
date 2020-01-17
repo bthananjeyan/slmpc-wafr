@@ -9,11 +9,14 @@ from slmpc.controllers import LMPC, RandomController
 def pointbot_config(exp_cfg):
 	exp_cfg.env = PointBot()
 	exp_cfg.save_dir = "logs/pointbot"
-	exp_cfg.soln_mode = "exact"
+	# TODO: following two lines are for using CEM, in practice want to solve PointBot exactly
+	exp_cfg.cem_env = PointBot(cem_env=True)
+	exp_cfg.soln_mode = "cem"
+	# exp_cfg.soln_mode = "exact"
 
 def cartpole_config(exp_cfg):
 	exp_cfg.env = CartPole()
-	exp_cfg.cem_env = CartPole(cem_env=True) # TODO: wrap this in proper abstraction
+	exp_cfg.cem_env = CartPole(cem_env=True)
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.save_dir = "logs/cartpole"
 

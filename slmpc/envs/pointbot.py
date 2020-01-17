@@ -35,7 +35,7 @@ def lqr_gains(A, B, Q, R, T):
 
 class PointBot(Env, utils.EzPickle):
 
-    def __init__(self):
+    def __init__(self, cem_env=False):
         utils.EzPickle.__init__(self)
         self.hist = self.cost = self.done = self.time = self.state = None
         self.A = np.eye(4)
@@ -47,6 +47,7 @@ class PointBot(Env, utils.EzPickle):
         self.observation_space = Box(-np.ones(4) * np.float('inf'), np.ones(4) * np.float('inf'))
         self.start_state = START_STATE
         self.name = "pointbot"
+        self.cem_env = cem_env
 
     def set_mode(self, mode):
         if self.mode == 1:
@@ -61,6 +62,8 @@ class PointBot(Env, utils.EzPickle):
         self.time += 1
         self.hist.append(self.state)
         self.done = HORIZON <= self.time
+        if not self.cem_env:
+            print("Real State: ", self.state, "Cost: ", cur_cost)
         return self.state, cur_cost, self.done, {}
 
     def reset(self):
@@ -70,6 +73,15 @@ class PointBot(Env, utils.EzPickle):
         self.done = False
         self.hist = [self.state]
         return self.state
+
+    def set_state(self, s):
+        self.state = s
+
+    def get_hist(self):
+        return self.hist
+
+    def get_costs(self):
+        return self.cost
 
     def _next_state(self, s, a):
         return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * truncnorm.rvs(-1, 1, size=len(s))
