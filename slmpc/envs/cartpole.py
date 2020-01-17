@@ -13,6 +13,7 @@ from gym import Env
 from gym import utils
 from gym.spaces import Box
 from .cartpole_const import *
+from scipy.stats import truncnorm
 
 def process_action(a):
     return np.clip(a, -MAX_FORCE, MAX_FORCE)
@@ -78,10 +79,10 @@ class CartPole(Env, utils.EzPickle):
         self.K, self.S, self.E = control.lqr(self.ss.A, self.ss.B, self.Q, self.R)
         self.ss.compute_K(desired_eigs = self.E) # Arbitarily set desired eigen values
         self.syst = InvertedPendulum()
-        self.horizon = HORIZON # TODO: Set this
+        self.horizon = HORIZON
         self.action_space = Box(-np.ones(1) * MAX_FORCE, np.ones(1) * MAX_FORCE) # TODO: set this
-        self.observation_space = Box(-np.ones(4) * np.float('inf'), np.ones(4) * np.float('inf')) # TODO: set this
-        self.start_state = START_STATE # TODO: set this, for now make it [0, 0, np.pi/4, 0]
+        self.observation_space = Box(-np.ones(4) * np.float('inf'), np.ones(4) * np.float('inf'))
+        self.start_state = START_STATE
         self.dt = DT
         self.t = 0
         self.name = "cartpole"
@@ -89,7 +90,7 @@ class CartPole(Env, utils.EzPickle):
     def step(self, a):
         a = process_action(a)
         sol = solve_ivp(y_dot_first(a), [self.t, self.t+self.dt], self.state, t_eval=[self.t+self.dt])
-        next_state = sol.y[:, -1] # TODO: Add bounded support noise to next_state
+        next_state = sol.y[:, -1] + NOISE_SCALE * truncnorm.rvs(-1, 1, size=len(self.state))
         cur_cost = self.step_cost(self.state, a)
         self.cost.append(cur_cost)
         self.state = next_state

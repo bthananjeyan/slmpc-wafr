@@ -15,6 +15,7 @@ from gym import utils
 from gym.spaces import Box
 
 from .pointbot_const import *
+from scipy.stats import truncnorm
 
 def process_action(a):
     return np.clip(a, -MAX_FORCE, MAX_FORCE)
@@ -71,7 +72,7 @@ class PointBot(Env, utils.EzPickle):
         return self.state
 
     def _next_state(self, s, a):
-        return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * np.random.randn(len(s))
+        return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * truncnorm.rvs(-1, 1, size=len(s))
 
     # TODO: make this not dense cost at some point
     def step_cost(self, s, a):
