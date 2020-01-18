@@ -2,6 +2,7 @@ import numpy as np
 
 from .controller import Controller
 from .safe_set import SafeSet
+from .value import ValueFunc
 import scipy.stats as stats
 import itertools
 from sklearn.neighbors import NearestNeighbors as knn
@@ -36,6 +37,7 @@ class LMPC(Controller):
 		self.env = cfg.env
 		self.env_name = self.env.env_name
 		self.SS = []
+		self.value_funcs = []
 		self.act_fn = ACT_FNS[self.env.name]
 		self.soln_mode = cfg.soln_mode
 		self.ss_approx_mode = cfg.ss_approx_mode
@@ -46,6 +48,8 @@ class LMPC(Controller):
 			pass
 		else:
 			raise("Unsupported SS Approx Mode")
+
+		self.value_approx_mode = cfg.value_approx_mode
 
 		if self.soln_mode == "cem":
 			self.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1}
@@ -80,16 +84,20 @@ class LMPC(Controller):
 
 	def reset(self):
 		self.SS = []
+		self.value_funcs = []
 		self.env.reset()
 		if self.soln_mode == "cem":
 			self.prev_sol = np.tile((self.ac_lb + self.ac_ub) / 2, [self.optimizer_params["plan_hor"]])
 
 	def train(self, samples):
-		self.SS.append(SafeSet(self.env.horizon))
+		self.SS.append(SafeSet())
+		self.value_funcs.append(ValueFunc(self.value_approx_mode))
+
 		for s in samples:
 			self.SS[-1].add_sample(s)
+			self.value_funcs[-1].add_sample(s)
 
-		# Take union of all safesets 
+		# Update safety model
 		all_states = list(itertools.chain.from_iterable([s.state_data for s in self.SS]))
 		all_states= list(itertools.chain.from_iterable(all_states))
 
@@ -99,6 +107,10 @@ class LMPC(Controller):
 			self.ss_approx_model = Delaunay(all_states)
 		else:
 			raise("Unsupported SS Approx Mode")
+
+		# Fit value function
+		self.value_funcs[-1].fit()
+
 
 	def run_cem(self, obs, mean, var):
 		lb = np.tile(self.ac_lb, [self.optimizer_params["plan_hor"]])
@@ -134,6 +146,13 @@ class LMPC(Controller):
 		else:
 			raise("Unsupported SS Approx Mode")
 
+	def compute_value(self, states):
+		value_mat = []
+		for value_func in self.value_funcs:
+			value_mat.append(value_func.value(states))
+		value_mat = np.vstack(value_mat)
+		return np.min(value_mat, axis=0)
+
 
 	def _predict_and_eval(self, obs, ac_seqs, get_pred_trajs=True):
 		"""
@@ -166,8 +185,10 @@ class LMPC(Controller):
 			# print("Time Taken Parallelized: " + str(round(finish-start, 2)))
 
 		safety_check = self.unsafe(pred_trajs[:, -1])
+		traj_value = self.compute_value(pred_trajs[:, -1])
 		costs = np.sum(costs, axis=1)
 		safety_check = safety_check.flatten()
+		costs += traj_value
 		costs += safety_check * 1e6
 
 		return costs, pred_trajs

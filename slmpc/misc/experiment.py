@@ -49,12 +49,13 @@ class Experiment:
 			data['actions'].append(action)
 			data['costs'].append(cost)
 		data['total_cost'] = np.sum(data['costs'])
+		data['values'] = np.cumsum(data['costs'][::-1])[::-1]
 		return data
 
 	def run(self):
 		self.reset()
 		# First train on demos
-		demo_full_data = pickle.load(open(self.demo_path, "rb")) # TODO: get samples from demos
+		demo_full_data = pickle.load(open(self.demo_path, "rb"))
 
 		demo_samples = []
 		for i in range(len(demo_full_data)):
@@ -62,7 +63,8 @@ class Experiment:
 				'states': demo_full_data[i]["obs"],
 				'actions': demo_full_data[i]["ac"],
 				'costs': demo_full_data[i]["costs"],
-				'total_cost': demo_full_data[i]["cost_sum"]
+				'total_cost': demo_full_data[i]["cost_sum"],
+				'values' : demo_full_data[i]["values"]
 			}
 			demo_samples.append(demo_data)
 
