@@ -9,20 +9,28 @@ from slmpc.controllers import LMPC, RandomController
 def pointbot_config(exp_cfg):
 	exp_cfg.env = PointBot()
 	exp_cfg.save_dir = "logs/pointbot"
+	exp_cfg.demo_path = "demos/pointbot/demos_1.p"
+	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
+	# exp_cfg.soln_mode = "exact"
 	# TODO: following two lines are for using CEM, in practice want to solve PointBot exactly
 	exp_cfg.cem_env = PointBot(cem_env=True)
 	exp_cfg.soln_mode = "cem"
-	# exp_cfg.soln_mode = "exact"
+	exp_cfg.alpha_thresh = 5
+	exp_cfg.parallelize_cem = False
 
 def cartpole_config(exp_cfg):
 	exp_cfg.env = CartPole()
 	exp_cfg.cem_env = CartPole(cem_env=True)
 	exp_cfg.soln_mode = "cem"
+	exp_cfg.alpha_thresh = 5
+	exp_cfg.parallelize_cem = True
 	exp_cfg.save_dir = "logs/cartpole"
+	exp_cfg.demo_path = "demos/cartpole/demos.p"
+	exp_cfg.ss_approx_mode = "knn"
 
 def config(env_name, controller_type):
 	exp_cfg = DotMap
-	exp_cfg.samples_per_iteration = 10
+	exp_cfg.samples_per_iteration = 2
 	exp_cfg.num_iterations = 10
 	exp_cfg.controller_type = controller_type
 	exp_cfg.log_all_data = False

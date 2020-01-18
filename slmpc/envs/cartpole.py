@@ -14,6 +14,7 @@ from gym import utils
 from gym.spaces import Box
 from .cartpole_const import *
 from scipy.stats import truncnorm
+import pickle
 
 def process_action(a):
     return np.clip(a, -MAX_FORCE, MAX_FORCE)
@@ -57,7 +58,7 @@ class MyLinearizedSystem:
         self.B = np.expand_dims( np.array( [0, 1.0/M, 0., -1/(M*L)] ) , 1 ) # 4x1
 
     def compute_K(self, desired_eigs = [-0.1, -0.2, -0.3, -0.4] ):
-        print('[compute_K] desired_eigs=', desired_eigs)
+        # print('[compute_K] desired_eigs=', desired_eigs)
         self.K = control.place( self.A, self.B,  desired_eigs )
 
     def get_K(self):
@@ -86,6 +87,7 @@ class CartPole(Env, utils.EzPickle):
         self.dt = DT
         self.t = 0
         self.name = "cartpole"
+        self.env_name = 'CartPole-v3'
         self.cem_env = cem_env
 
     def step(self, a):
@@ -99,8 +101,8 @@ class CartPole(Env, utils.EzPickle):
         self.t += self.dt
         self.hist.append(self.state)
         self.done = HORIZON <= self.time
-        if not self.cem_env:
-            print("Real State: ", self.state, "Cost: ", cur_cost)
+        # if not self.cem_env:
+            # print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
         return self.state, cur_cost, self.done, {}
 
     def reset(self):
@@ -148,7 +150,7 @@ class CartPoleTeacher(object):
     def __init__(self):
         self.env = CartPole()
         self.demonstrations = []
-        self.outdir = "data/cartpole"
+        self.outdir = "demos/cartpole"
 
     def get_rollout(self):
         obs = self.env.reset()
@@ -168,7 +170,6 @@ class CartPoleTeacher(object):
             costs.append(cost)
             if done:
                 break
-        costs = np.array(costs)
 
         values = np.cumsum(costs[::-1])[::-1]
         print("OBS", obs)
@@ -179,13 +180,17 @@ class CartPoleTeacher(object):
             return self.get_rollout()
 
         return {
-            "obs": np.array(O),
-            "ac": np.array(A),
+            "obs": O,
+            "ac": A,
             "cost_sum": cost_sum,
             "costs": costs,
             "values": values,
             "stabilizable_obs" : stabilizable_obs
         }
+
+    def save_demos(self, num_demos):
+        rollouts = [teacher.get_rollout() for i in range(num_demos)]
+        pickle.dump(rollouts, open( osp.join(self.outdir, "demos.p"), "wb" ) )
 
 # Both cart and the pendulum can move.
 if __name__=="__main__":
@@ -193,6 +198,9 @@ if __name__=="__main__":
     env = CartPole()
     obs = env.reset()
     teacher = env.teacher()
+    teacher.save_demos(20)
+    print("DONE DEMOS")
+
     rollout = teacher.get_rollout()
     obs_rollout = rollout["obs"]
     acs_rollout = rollout["ac"]

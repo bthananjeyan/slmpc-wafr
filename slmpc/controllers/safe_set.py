@@ -1,6 +1,5 @@
-
+# TODO: add goal conditioned filter or something
 class SafeSet:
-
 	def __init__(self, horizon):
 		self.state_data = [] # nsamples X horizon X state_dim
 		self.cost_data = [] # nsamples X horizon
@@ -14,4 +13,7 @@ class SafeSet:
 	def add_sample(self, sample):
 		self.state_data.append(sample['states'])
 		self.cost_data.append(sample['costs'])
+
+
+
 

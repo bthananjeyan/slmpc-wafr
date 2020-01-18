@@ -2,7 +2,7 @@ from datetime import datetime
 import os
 import os.path as osp
 import pickle
-
+import itertools
 import numpy as np
 
 class Experiment:
@@ -17,6 +17,7 @@ class Experiment:
 
 		self.log_all_data = exp_cfg.log_all_data
 		self.save_dir = self.exp_cfg.save_dir
+		self.demo_path = self.exp_cfg.demo_path
 		if not os.path.exists(self.save_dir):
 			os.makedirs(self.save_dir)
 		self.save_dir = osp.join(self.save_dir, datetime.now().strftime("%Y-%m-%d--%H:%M:%S"))
@@ -52,6 +53,21 @@ class Experiment:
 
 	def run(self):
 		self.reset()
+		# First train on demos
+		demo_full_data = pickle.load(open(self.demo_path, "rb")) # TODO: get samples from demos
+
+		demo_samples = []
+		for i in range(len(demo_full_data)):
+			demo_data = {
+				'states': demo_full_data[i]["obs"],
+				'actions': demo_full_data[i]["ac"],
+				'costs': demo_full_data[i]["costs"],
+				'total_cost': demo_full_data[i]["cost_sum"]
+			}
+			demo_samples.append(demo_data)
+
+		self.all_samples.append(demo_samples)
+		self.controller.train(demo_samples)
 
 		for i in range(self.num_iterations):
 			print("##### Iteration %d #####"%i)
