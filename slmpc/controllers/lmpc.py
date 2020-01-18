@@ -5,7 +5,7 @@ from .safe_set import SafeSet
 import scipy.stats as stats
 import itertools
 from sklearn.neighbors import NearestNeighbors as knn
-from scipy.spatial import ConvexHull
+from scipy.spatial import Delaunay
 
 import concurrent.futures
 import gym
@@ -96,7 +96,7 @@ class LMPC(Controller):
 		if self.ss_approx_mode == "knn":
 			self.ss_approx_model.fit(np.array(all_states))
 		elif self.ss_approx_mode == "convex_hull":
-			self.ss_approx_model = ConvexHull(all_states)
+			self.ss_approx_model = Delaunay(all_states)
 		else:
 			raise("Unsupported SS Approx Mode")
 
@@ -122,7 +122,8 @@ class LMPC(Controller):
 
 	def unsafe(self, states):
 		if self.ss_approx_mode == "convex_hull":
-			raise("Not Implemented Error")
+			return (self.ss_approx_model.find_simplex(states)<0).astype(int)
+
 		elif self.ss_approx_mode == "knn":
 			dists = self.ss_approx_model.kneighbors(states)[0]
 			unsafe_idxs = np.where(dists > self.alpha_thresh)
