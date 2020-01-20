@@ -42,5 +42,5 @@ if __name__ == '__main__':
 	exp_cfg = config(args.env_name, args.ctrl)
 	experiment = Experiment(exp_cfg.controller, exp_cfg.env, exp_cfg)
 	experiment.run()
-	experiment.plot_results()
+	# experiment.plot_results()
 	

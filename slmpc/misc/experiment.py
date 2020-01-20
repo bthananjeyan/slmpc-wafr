@@ -64,12 +64,13 @@ class Experiment:
 			print("Average Cost: %f"%mean_cost)
 
 			self.dump_logs()
+		self.plot_results(save_file=osp.join(self.save_dir, "costs.png"), show=False)
 
 	@property
 	def stats(self):
 		return self.mean_costs
 
-	def plot_results(self, save_file=None):
+	def plot_results(self, save_file=None, show=True):
 		import matplotlib.pyplot as plt
 		plt.plot(self.stats)
 		plt.title("Mean Trajectory Cost vs. Iteration")
@@ -77,4 +78,6 @@ class Experiment:
 		plt.ylabel("Trajectory Cost")
 		if save_file is not None:
 			plt.savefig(save_file)
-		plt.show()
+		if show:
+			plt.show()
+		plt.clf()
