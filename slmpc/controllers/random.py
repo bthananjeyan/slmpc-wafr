@@ -9,7 +9,6 @@ class RandomController(Controller):
 		self.env = cfg.env
 
 	def act(self, state):
-		# TODO: set up and solve problem in cvxpy
 		return self.env.sample()
 
 	def reset(self):

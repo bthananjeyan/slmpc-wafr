@@ -13,9 +13,9 @@ import numpy as np
 from gym import Env
 from gym import utils
 from gym.spaces import Box
+from scipy.stats import truncnorm
 
 from .pointbot_const import *
-from scipy.stats import truncnorm
 
 def process_action(a):
     return np.clip(a, -MAX_FORCE, MAX_FORCE)

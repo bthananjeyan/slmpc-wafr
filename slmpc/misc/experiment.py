@@ -1,8 +1,9 @@
 from datetime import datetime
+import itertools
 import os
 import os.path as osp
 import pickle
-import itertools
+
 import numpy as np
 
 class Experiment:
