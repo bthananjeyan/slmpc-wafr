@@ -33,7 +33,7 @@ class ValueFunc:
 		if approx_mode == "linear":
 			self.model = Ridge(alpha=0) 
 		elif approx_mode == "knn":
-			self.model = knn(n_neighbors=10) # TODO: think about n_neighbors
+			self.model = knn(n_neighbors=5) # TODO: think about n_neighbors
 		elif approx_mode == "pe":
 			self.sess = tf.Session()
 			# TODO: store value func params in a dotmap config

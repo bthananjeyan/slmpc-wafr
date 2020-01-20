@@ -74,7 +74,7 @@ class CartPole(Env, utils.EzPickle):
         # Eigen Values set by LQR
         self.Q = np.diag( [1,1,1,1.] )
         self.R = np.diag( [1.] )
-        # K : State feedback for stavility
+        # K : State feedback for stability
         # S : Solution to Riccati Equation
         # E : Eigen values of the closed loop system
         self.K, self.S, self.E = control.lqr(self.ss.A, self.ss.B, self.Q, self.R)

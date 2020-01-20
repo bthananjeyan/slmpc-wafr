@@ -38,10 +38,12 @@ class LMPC(Controller):
 		self.env_name = self.env.env_name
 		self.SS = []
 		self.value_funcs = []
+		self.all_safe_states = []
 		self.value_ss_approx_models = []
 		self.act_fn = ACT_FNS[self.env.name]
 		self.soln_mode = cfg.soln_mode
 		self.ss_approx_mode = cfg.ss_approx_mode
+		self.variable_start_state = cfg.variable_start_state
 
 		if self.ss_approx_mode == "knn":
 			self.ss_approx_model = knn(n_neighbors=1)
@@ -53,7 +55,8 @@ class LMPC(Controller):
 		self.value_approx_mode = cfg.value_approx_mode
 
 		if self.soln_mode == "cem":
-			self.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1}
+			self.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 10, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for pointbot?
+			# self.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": 5} These kind of work for cartpole
 			self.alpha_thresh = cfg.alpha_thresh
 			self.ac_lb = self.env.action_space.low
 			self.ac_ub = self.env.action_space.high
@@ -68,8 +71,8 @@ class LMPC(Controller):
 		if self.soln_mode == "cem":
 			return self.cem_act(state)
 		elif self.soln_mode == "exact":
-			# TODO: set up and solve problem in cvxpy
-			return self.act_fn(state, self.env)
+			raise Exception("Not Implemented")
+			# return self.act_fn(state, self.env)
 		else:
 			raise Exception("Unsupported solution method")
 
@@ -78,7 +81,7 @@ class LMPC(Controller):
 			action, self.ac_buf = self.ac_buf[0], self.ac_buf[1:]
 			return action
 
-		soln = self.run_cem(state, mean=self.prev_sol, var=self.init_var)
+		soln, rollout = self.run_cem(state, mean=self.prev_sol, var=self.init_var)
 		self.prev_sol = np.concatenate([np.copy(soln)[self.optimizer_params["per"]*self.dU:], np.zeros(self.optimizer_params["per"]*self.dU)])
 		self.ac_buf = soln[:self.optimizer_params["per"]*self.dU].reshape(-1, self.dU)
 		return self.cem_act(state)
@@ -86,10 +89,13 @@ class LMPC(Controller):
 	def reset(self):
 		self.SS = []
 		self.value_funcs = []
+		self.all_safe_states = []
+		self.value_ss_approx_models = []
 		self.env.reset()
 		if self.soln_mode == "cem":
 			self.prev_sol = np.tile((self.ac_lb + self.ac_ub) / 2, [self.optimizer_params["plan_hor"]])
 
+	# Returns start state for next iteration
 	def train(self, samples):
 		self.SS.append(SafeSet())
 		self.value_funcs.append(ValueFunc(self.value_approx_mode))
@@ -110,29 +116,64 @@ class LMPC(Controller):
 			raise("Unsupported SS Approx Mode")
 
 		# Update safety model
-		all_states = list(itertools.chain.from_iterable([s.state_data for s in self.SS]))
-		all_states= list(itertools.chain.from_iterable(all_states))
+		all_safe_states = list(itertools.chain.from_iterable([s.state_data for s in self.SS]))
+		self.all_safe_states= list(itertools.chain.from_iterable(all_safe_states))
 
 		if self.ss_approx_mode == "knn":
-			self.ss_approx_model.fit(np.array(all_states))
+			self.ss_approx_model.fit(np.array(self.all_safe_states))
 		elif self.ss_approx_mode == "convex_hull":
-			self.ss_approx_model = Delaunay(all_states)
+			self.ss_approx_model = Delaunay(self.all_safe_states)
 		else:
 			raise("Unsupported SS Approx Mode")
 
 		# Fit value function
 		self.value_funcs[-1].fit()
 
+	def compute_valid_start_state(self):
+		valid_start = None
+		# Find a valid start state
+		if self.variable_start_state:
+			valid = False
+			while not valid:
+				sampled_start = self.all_safe_states[np.random.randint(len(self.all_safe_states))]
+				traj, valid = self.traj_opt(sampled_start)
+				valid_start = traj[-self.optimizer_params["plan_hor"]]
 
-	def run_cem(self, obs, mean, var):
-		lb = np.tile(self.ac_lb, [self.optimizer_params["plan_hor"]])
-		ub = np.tile(self.ac_ub, [self.optimizer_params["plan_hor"]])
+		return valid_start
+
+	def traj_opt(self, obs):
+		if self.soln_mode == "cem":
+			mean = np.tile((self.ac_lb + self.ac_ub) / 2, [self.optimizer_params["plan_hor"]+self.optimizer_params["extra_hor"]])
+			var = np.tile(np.square(self.ac_ub - self.ac_lb) / 16, [self.optimizer_params["plan_hor"]+self.optimizer_params["extra_hor"]])
+			soln, pred_traj = self.run_cem(obs, mean, var, traj_opt_mode=True)
+			invalid = int(self.unsafe(pred_traj[-1:], self.ss_approx_model)[0, 0]) # Check whether terminal state is actually safe
+		elif self.soln_mode == "exact":
+			raise Exception("Not Implemented")
+		else:
+			raise Exception("Unsupported solution method")
+
+		if invalid:
+			return pred_traj, False
+		else:
+			return pred_traj, True 
+
+	def run_cem(self, obs, mean, var, traj_opt_mode=False):
+		if traj_opt_mode:
+			plan_hor = self.optimizer_params["plan_hor"] + self.optimizer_params["extra_hor"]
+		else:
+			plan_hor = self.optimizer_params["plan_hor"]
+
+		lb = np.tile(self.ac_lb, [plan_hor])
+		ub = np.tile(self.ac_ub, [plan_hor])
 		X = stats.truncnorm(-2, 2, loc=np.zeros_like(mean), scale=np.ones_like(mean))
 		for i in range(self.optimizer_params["num_iters"]):
 			lb_dist, ub_dist = mean - lb, ub - mean
 			constrained_var = np.minimum(np.minimum(np.square(lb_dist / 2), np.square(ub_dist / 2)), var)
-			samples = X.rvs(size=[self.optimizer_params["popsize"], self.optimizer_params["plan_hor"]*self.dU]) * np.sqrt(constrained_var) + mean
-			costs, rollouts = self._predict_and_eval(obs, samples)
+			samples = X.rvs(size=[self.optimizer_params["popsize"], plan_hor*self.dU]) * np.sqrt(constrained_var) + mean
+			if traj_opt_mode:
+				costs, rollouts = self._predict_and_eval_expansion(obs, samples)
+			else:
+				costs, rollouts = self._predict_and_eval(obs, samples)
 			costs = costs.reshape(self.optimizer_params["npart"], self.optimizer_params["popsize"]).T.mean(1)
 			print(" CEM Iteration ", i, "Cost: ", np.mean(costs))
 			elites = samples[np.argsort(costs)][:self.optimizer_params["num_elites"]]
@@ -142,7 +183,9 @@ class LMPC(Controller):
 			new_mean = np.mean(elites, axis=0)
 			new_var = np.var(elites, axis=0)
 			mean, var = self.optimizer_params["alpha"] * mean + (1 - self.optimizer_params["alpha"]) * new_mean, self.optimizer_params["alpha"] * var + (1 - self.optimizer_params["alpha"]) * new_var # refit mean/var
-		return mean
+		
+		# Return best action and corresponding full rollout
+		return elites[0], rollouts[np.argmin(costs)]
 
 	def unsafe(self, states, approx_model):
 		if self.ss_approx_mode == "convex_hull":
@@ -207,6 +250,45 @@ class LMPC(Controller):
 		costs = np.sum(costs, axis=1)
 		safety_check = safety_check.flatten()
 		costs += traj_value
+		costs += safety_check * 1e6
+
+		return costs, pred_trajs
+
+	def _predict_and_eval_expansion(self, obs, ac_seqs, get_pred_trajs=True):
+		"""
+		Takes in Numpy arrays obs (current image) and action sequences to evaluate. Returns the predicted
+		frames and the costs associated with each action sequence.
+		"""
+		ac_seqs = np.reshape(ac_seqs, [-1, self.optimizer_params["plan_hor"]+self.optimizer_params["extra_hor"], self.dU])
+
+		# Keep setting state to obs and simulating actions: # TODO: parallelize
+		if not self.parallelize_cem:
+			start = time.perf_counter()	
+			pred_trajs = np.zeros((self.optimizer_params["popsize"], self.optimizer_params["plan_hor"]+self.optimizer_params["extra_hor"]+1, len(obs)))
+			for i in range(self.optimizer_params["popsize"]):
+				self.cem_env.reset()
+				self.cem_env.set_state(obs)
+				for j in range(self.optimizer_params["plan_hor"]+self.optimizer_params["extra_hor"]):
+					self.cem_env.step(ac_seqs[i, j])
+
+				pred_trajs[i] = np.array(self.cem_env.get_hist())
+			finish = time.perf_counter()
+			# print("Time Taken Serially: " + str(round(finish-start, 2)))
+		else:
+			start = time.perf_counter()
+			results = get_preds_parallel(ac_seqs, self.env_name, obs)
+			pred_trajs = np.array([r[0] for r in results])
+			costs = np.array([r[1] for r in results])
+			finish = time.perf_counter()
+			# print("Time Taken Parallelized: " + str(round(finish-start, 2)))
+
+		costs = 1 - self.unsafe(pred_trajs[:, 0], self.ss_approx_model) # 0 cost if unsafe
+		for i in range(1, pred_trajs.shape[1]-1):
+			costs += (1 - self.unsafe(pred_trajs[:, i], self.ss_approx_model) )
+
+		costs = costs.flatten()
+		safety_check = self.unsafe(pred_trajs[:, -1], self.ss_approx_model)
+		safety_check = safety_check.flatten()
 		costs += safety_check * 1e6
 
 		return costs, pred_trajs
