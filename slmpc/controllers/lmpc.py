@@ -38,6 +38,7 @@ class LMPC(Controller):
 		self.env_name = self.env.env_name
 		self.SS = []
 		self.value_funcs = []
+		self.value_ss_approx_models = []
 		self.act_fn = ACT_FNS[self.env.name]
 		self.soln_mode = cfg.soln_mode
 		self.ss_approx_mode = cfg.ss_approx_mode
@@ -97,6 +98,17 @@ class LMPC(Controller):
 			self.SS[-1].add_sample(s)
 			self.value_funcs[-1].add_sample(s)
 
+		# First fit safety density models (TODO: fix this)
+		if self.ss_approx_mode == "convex_hull":
+			value_ss_approx_model = Delaunay(list(itertools.chain.from_iterable(self.SS[-1].state_data)))
+			self.value_ss_approx_models.append(value_ss_approx_model)
+		elif self.ss_approx_mode == "knn":
+			value_ss_approx_model = knn(n_neighbors=1)
+			value_ss_approx_model.fit(list(itertools.chain.from_iterable(self.SS[-1].state_data)))
+			self.value_ss_approx_models.append(value_ss_approx_model)	
+		else:
+			raise("Unsupported SS Approx Mode")
+
 		# Update safety model
 		all_states = list(itertools.chain.from_iterable([s.state_data for s in self.SS]))
 		all_states= list(itertools.chain.from_iterable(all_states))
@@ -132,12 +144,12 @@ class LMPC(Controller):
 			mean, var = self.optimizer_params["alpha"] * mean + (1 - self.optimizer_params["alpha"]) * new_mean, self.optimizer_params["alpha"] * var + (1 - self.optimizer_params["alpha"]) * new_var # refit mean/var
 		return mean
 
-	def unsafe(self, states):
+	def unsafe(self, states, approx_model):
 		if self.ss_approx_mode == "convex_hull":
-			return (self.ss_approx_model.find_simplex(states)<0).astype(int)
+			return (approx_model.find_simplex(states)<0).astype(int)
 
 		elif self.ss_approx_mode == "knn":
-			dists = self.ss_approx_model.kneighbors(states)[0]
+			dists = approx_model.kneighbors(states)[0]
 			unsafe_idxs = np.where(dists > self.alpha_thresh)
 			safe_idxs = np.where(dists <= self.alpha_thresh)
 			dists[unsafe_idxs] = 1
@@ -146,9 +158,15 @@ class LMPC(Controller):
 		else:
 			raise("Unsupported SS Approx Mode")
 
+	# TODO: fit a safe set approx model to every safe set so far and blow
+	# up value for any state that is not in them @ each iteration
 	def compute_value(self, states):
+		# Now evaluate queried states on each value_ss_approx_model and blow
+		# up values accordingly if needed
 		value_mat = []
-		for value_func in self.value_funcs:
+		for value_func, value_ss_approx_model in zip(self.value_funcs, self.value_ss_approx_models):
+			res = self.unsafe(states, value_ss_approx_model)
+			values = value_func.value(states) + 1e6 * res # blow up unsafe values
 			value_mat.append(value_func.value(states))
 		value_mat = np.vstack(value_mat)
 		return np.min(value_mat, axis=0)
@@ -184,7 +202,7 @@ class LMPC(Controller):
 			finish = time.perf_counter()
 			# print("Time Taken Parallelized: " + str(round(finish-start, 2)))
 
-		safety_check = self.unsafe(pred_trajs[:, -1])
+		safety_check = self.unsafe(pred_trajs[:, -1], self.ss_approx_model)
 		traj_value = self.compute_value(pred_trajs[:, -1])
 		costs = np.sum(costs, axis=1)
 		safety_check = safety_check.flatten()
