@@ -57,6 +57,7 @@ class Experiment:
 		data['values'] = np.cumsum(data['costs'][::-1])[::-1]
 		return data
 
+	# TODO: build something to create visualizations of safe set
 	def run(self):
 		self.reset()
 		# First train on demos
