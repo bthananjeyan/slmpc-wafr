@@ -62,7 +62,19 @@ class ValueFunc:
 		elif self.approx_mode == "knn":
 			self.model.fit(self.state_fit_data)
 		elif self.approx_mode == "pe":
-			self.model.train(self.state_fit_data, self.value_fit_data[...,np.newaxis], epochs=20)
+			self.model.train(self.state_fit_data, self.value_fit_data[...,np.newaxis], epochs=100)
+			# grid = []
+			# for i in range(-50,50):
+			# 	for j in range(-50, 50):
+			# 		grid.append([i, 0, j, 0])
+			# grid = np.array(grid)
+			# preds = self.model.predict(grid, factored=False)[0].squeeze()
+			# # import IPython; IPython.embed()
+			# preds = preds.reshape((100, 100))
+			# import matplotlib.pyplot as plt
+			# plt.imshow(preds)
+			# plt.show()
+			# assert 0
 		else:
 			raise("Unsupported value approximation mode")
 
@@ -78,7 +90,7 @@ class ValueFunc:
 			neighbor_values = self.value_fit_data[neighbors]	
 			return np.mean(neighbor_values, axis=1)
 		elif self.approx_mode == "pe":
-			return self.model.predict(states, factored=False)[0].squeeze() # Ignore variance for now
+			return np.max(self.model.predict(states, factored=False)[0].squeeze(), 0) # Ignore variance for now
 		else:
 			raise("Unsupported value approximation mode")
 
