@@ -15,6 +15,7 @@ from gym import utils
 from gym.spaces import Box
 
 from .pointbot_const import *
+from scipy.stats import truncnorm
 
 def process_action(a):
     return np.clip(a, -MAX_FORCE, MAX_FORCE)
@@ -34,7 +35,7 @@ def lqr_gains(A, B, Q, R, T):
 
 class PointBot(Env, utils.EzPickle):
 
-    def __init__(self):
+    def __init__(self, cem_env=False):
         utils.EzPickle.__init__(self)
         self.hist = self.cost = self.done = self.time = self.state = None
         self.A = np.eye(4)
@@ -46,8 +47,12 @@ class PointBot(Env, utils.EzPickle):
         self.observation_space = Box(-np.ones(4) * np.float('inf'), np.ones(4) * np.float('inf'))
         self.start_state = START_STATE
         self.name = "pointbot"
+        self.env_name = 'PointBot-v0'
+        self.cem_env = cem_env
+        self.mode = 1 # TODO: don't hardcode this @Brijen there is a bug with mode, not sure what desired behavior is
 
     def set_mode(self, mode):
+        self.mode = mode
         if self.mode == 1:
             self.start_state = [-100, 0, 0, 0]
 
@@ -60,6 +65,8 @@ class PointBot(Env, utils.EzPickle):
         self.time += 1
         self.hist.append(self.state)
         self.done = HORIZON <= self.time
+        if not self.cem_env:
+            print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
         return self.state, cur_cost, self.done, {}
 
     def reset(self):
@@ -70,10 +77,22 @@ class PointBot(Env, utils.EzPickle):
         self.hist = [self.state]
         return self.state
 
-    def _next_state(self, s, a):
-        return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * np.random.randn(len(s))
+    def set_state(self, s):
+        self.state = s
 
+    def get_hist(self):
+        return self.hist
+
+    def get_costs(self):
+        return self.cost
+
+    def _next_state(self, s, a):
+        return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * truncnorm.rvs(-1, 1, size=len(s))
+
+    # TODO: make this not dense cost at some point
     def step_cost(self, s, a):
+        if HARD_MODE:
+            return int(np.linalg.norm(np.subtract(GOAL_STATE, s)) > GOAL_THRESH)
         return np.linalg.norm(np.subtract(GOAL_STATE, s))
 
     def values(self):
@@ -102,7 +121,7 @@ class PointBotTeacher(object):
         self.env = PointBot()
         self.Ks, self.Ps = lqr_gains(self.env.A, self.env.B, np.eye(4), 50 * np.eye(2), HORIZON)
         self.demonstrations = []
-        self.outdir = "data/pointbot"
+        self.outdir = "demos/pointbot"
 
     def get_rollout(self):
         obs = self.env.reset()
@@ -136,7 +155,6 @@ class PointBotTeacher(object):
             costs.append(cost)
             if done:
                 break
-        costs = np.array(costs)
 
         values = np.cumsum(costs[::-1])[::-1]
         if self.env.is_stable(obs):
@@ -146,16 +164,27 @@ class PointBotTeacher(object):
             return self.get_rollout()
 
         return {
-            "obs": np.array(O),
-            "ac": np.array(A),
+            "obs": O,
+            "ac": A,
             "cost_sum": cost_sum,
             "costs": costs,
             "values": values,
             "stabilizable_obs" : stabilizable_obs
         }
 
+    def save_demos(self, num_demos):
+        rollouts = [teacher.get_rollout() for i in range(num_demos)]
+        pickle.dump(rollouts, open( osp.join(self.outdir, "demos_" + str(self.env.mode) + ".p"), "wb" ) )
+
     def _get_gain(self, t):
         return self.Ks[t]
 
     def _expert_control(self, s, t):
         return self._get_gain(t).dot(s)
+
+if __name__=="__main__":
+    env = PointBot()
+    obs = env.reset()
+    teacher = env.teacher()
+    teacher.save_demos(20)
+    print("DONE DEMOS")
