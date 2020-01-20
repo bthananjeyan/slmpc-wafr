@@ -33,13 +33,17 @@ class Experiment:
 			with open(osp.join(self.save_dir, "samples.pkl"), "wb") as f:
 				pickle.dump(self.all_samples, f)
 
-	def sample(self):
+	def sample(self, start_state):
 		data = {
 			'states': [],
 			'actions': [],
 			'costs': []
 		}
 		obs = self.env.reset()
+
+		if start_state is not None: # multi-start case
+			self.env.set_state(start_state)
+
 		data['states'].append(obs)
 		done = False
 		while not done:
@@ -73,7 +77,12 @@ class Experiment:
 
 		for i in range(self.num_iterations):
 			print("##### Iteration %d #####"%i)
-			samples = [self.sample() for _ in range(self.samples_per_iteration)] # TODO: parallelize
+
+			samples = []
+			for _ in range(self.samples_per_iteration):
+				valid_start = self.controller.compute_valid_start_state()
+				samples.append(self.sample(valid_start))
+
 			self.all_samples.append(samples)
 			self.controller.train(samples)
 

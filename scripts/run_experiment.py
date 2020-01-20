@@ -12,8 +12,7 @@ def pointbot_config(exp_cfg):
 	exp_cfg.demo_path = "demos/pointbot/demos_1.p"
 	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
 	exp_cfg.value_approx_mode = "knn" # could be linear too, but I am pretty sure knn is better
-	# exp_cfg.soln_mode = "exact"
-	# TODO: following two lines are for using CEM, in practice want to solve PointBot exactly
+	exp_cfg.variable_start_state = True
 	exp_cfg.cem_env = PointBot(cem_env=True)
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 3
@@ -28,6 +27,7 @@ def cartpole_config(exp_cfg):
 	exp_cfg.save_dir = "logs/cartpole"
 	exp_cfg.demo_path = "demos/cartpole/demos.p"
 	exp_cfg.ss_approx_mode = "knn"
+	exp_cfg.variable_start_state = False
 	exp_cfg.value_approx_mode = "knn" # could be linear too, but I am pretty sure knn is better
 
 def config(env_name, controller_type):
