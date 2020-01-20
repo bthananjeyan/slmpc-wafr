@@ -15,7 +15,7 @@ def pointbot_config(exp_cfg):
 	exp_cfg.variable_start_state = False
 	exp_cfg.cem_env = PointBot(cem_env=True)
 	exp_cfg.soln_mode = "cem"
-	exp_cfg.alpha_thresh = 1
+	exp_cfg.alpha_thresh = 3
 	exp_cfg.parallelize_cem = False
 
 def cartpole_config(exp_cfg):
@@ -28,7 +28,7 @@ def cartpole_config(exp_cfg):
 	exp_cfg.demo_path = "demos/cartpole/demos.p"
 	exp_cfg.ss_approx_mode = "knn"
 	exp_cfg.variable_start_state = False
-	exp_cfg.value_approx_mode = "knn" # could be linear too, but I am pretty sure knn is better
+	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
 
 def config(env_name, controller_type):
 	exp_cfg = DotMap
