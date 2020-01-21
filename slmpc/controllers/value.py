@@ -21,7 +21,7 @@ def value_pe_constructor(sess, load_model, model_dir):
 		model.add(FC(500, activation='swish', weight_decay=0.00025))
 		model.add(FC(1, weight_decay=0.0005, activation='ReLU'))
 
-	model.finalize(tf.train.AdamOptimizer, {"learning_rate": 0.001}, suffix = "val")
+	model.finalize(tf.compat.v1.train.AdamOptimizer, {"learning_rate": 0.001}, suffix = "val")
 	return model
 
 # TODO: add goal conditioned filter or something
