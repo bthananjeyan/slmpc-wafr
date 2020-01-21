@@ -31,7 +31,6 @@ class ValueFunc:
 		self.value_data = value_data # nsamples X horizon
 		self.approx_mode = approx_mode
 		self.model_fit = load_model
-		print("GOT HERE")
 		if approx_mode == "linear":
 			self.model = Ridge(alpha=0) 
 		elif approx_mode == "knn":
@@ -45,7 +44,6 @@ class ValueFunc:
 		else:
 			raise("Unsupported value approximation mode")
 
-		print("GOT HERE NOW")
 
 	def get_samples(self, t=None):
 		if idx is None:

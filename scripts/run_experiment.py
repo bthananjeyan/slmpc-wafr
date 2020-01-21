@@ -37,8 +37,8 @@ def cartpole_config(exp_cfg):
 
 def config(env_name, controller_type):
 	exp_cfg = DotMap()
-	exp_cfg.samples_per_iteration = 2
-	exp_cfg.num_iterations = 10
+	exp_cfg.samples_per_iteration = 100
+	exp_cfg.num_iterations = 5
 	exp_cfg.controller_type = controller_type
 	exp_cfg.log_all_data = False
 

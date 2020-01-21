@@ -56,7 +56,7 @@ class PointBot(Env, utils.EzPickle):
         if self.mode == 1:
             self.start_state = [-100, 0, 0, 0]
 
-    def step(self, a):
+    def step(self, a, log=False):
         a = process_action(a)
         next_state = self._next_state(self.state, a)
         cur_cost = self.step_cost(self.state, a)
@@ -65,7 +65,7 @@ class PointBot(Env, utils.EzPickle):
         self.time += 1
         self.hist.append(self.state)
         self.done = HORIZON <= self.time
-        if not self.cem_env:
+        if not self.cem_env and log:
             print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
         return self.state, cur_cost, self.done, {}
 
