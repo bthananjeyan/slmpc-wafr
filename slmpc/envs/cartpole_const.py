@@ -3,7 +3,7 @@ Constants associated with the PointBot env.
 """
 import numpy as np 
 
-START_STATE = [0.0, 0., np.pi/2 + 0.001, 0. ]
+START_STATE = [0.0, 0., 3*np.pi/8 + 0.001, 0. ]
 GOAL_STATE = [0, 0, np.pi/2, 0]
 # GOAL_THRESH = 0.003
 GOAL_THRESH = 0.05

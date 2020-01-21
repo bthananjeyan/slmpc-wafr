@@ -11,6 +11,10 @@ from scipy.spatial import Delaunay
 import concurrent.futures
 import gym
 import time
+import pickle
+import os
+import errno
+import tensorflow as tf
 
 def get_preds(acs, env_name, state):
 	local_env = gym.make(env_name, cem_env=True)
@@ -34,16 +38,15 @@ def get_preds_parallel(all_acs, env_name, state):
 class LMPC(Controller):
 
 	def __init__(self, cfg):
-		self.env = cfg.env
-		self.env_name = self.env.env_name
+		self.env_name = cfg.env_name
 		self.SS = []
 		self.value_funcs = []
 		self.all_safe_states = []
 		self.value_ss_approx_models = []
-		self.act_fn = ACT_FNS[self.env.name]
 		self.soln_mode = cfg.soln_mode
 		self.ss_approx_mode = cfg.ss_approx_mode
 		self.variable_start_state = cfg.variable_start_state
+		self.model_logdir = cfg.model_logdir
 
 		if self.ss_approx_mode == "knn":
 			self.ss_approx_model = knn(n_neighbors=1)
@@ -58,12 +61,12 @@ class LMPC(Controller):
 			# self.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 10, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for pointbot?
 			self.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for cartpole
 			self.alpha_thresh = cfg.alpha_thresh
-			self.ac_lb = self.env.action_space.low
-			self.ac_ub = self.env.action_space.high
+			self.ac_lb = cfg.ac_lb
+			self.ac_ub = cfg.ac_ub
 			self.prev_sol = np.tile((self.ac_lb + self.ac_ub) / 2, [self.optimizer_params["plan_hor"]])
 			self.init_var = np.tile(np.square(self.ac_ub - self.ac_lb) / 16, [self.optimizer_params["plan_hor"]])
 			self.dU = self.ac_lb.size
-			self.cem_env = cfg.cem_env
+			self.cem_env = gym.make(self.env_name, cem_env=True)
 			self.ac_buf = np.array([]).reshape(0, self.dU)
 			self.parallelize_cem = cfg.parallelize_cem
 
@@ -91,7 +94,6 @@ class LMPC(Controller):
 		self.value_funcs = []
 		self.all_safe_states = []
 		self.value_ss_approx_models = []
-		self.env.reset()
 		if self.soln_mode == "cem":
 			self.prev_sol = np.tile((self.ac_lb + self.ac_ub) / 2, [self.optimizer_params["plan_hor"]])
 
@@ -293,13 +295,53 @@ class LMPC(Controller):
 
 		return costs, pred_trajs
 
-def pointbot_act(state, env):
-	return env.sample()
+	def save_controller_state(self):
+		pickle.dump(self.ss_approx_model, open(os.path.join(self.model_logdir, "ss_approx_model.pkl"), "wb"))
+		# self.all_safe_states
+		pickle.dump(self.all_safe_states, open(os.path.join(self.model_logdir, "all_safe_states.pkl"), "wb"))
+		# Save data for self.SS
+		pickle.dump([s.get_data() for s in self.SS], open(os.path.join(self.model_logdir, "ss_data.pkl"), "wb"))
 
-def cartpole_act(state, env):
-	return env.sample()
+		# Save self.value_funcs
+		for i, v in enumerate(self.value_funcs):
+			value_model = v.model
+			desired_path = os.path.join(self.model_logdir, "value", "value_model_" + str(i))
+			if not os.path.exists(desired_path):
+				os.makedirs(desired_path)
+			value_model.save(desired_path)
+		# Save data for self.value_funcs
+		pickle.dump([v.get_data() for v in self.value_funcs], open(os.path.join(self.model_logdir, "value_data.pkl"), "wb"))
 
-ACT_FNS = {
-	'pointbot': pointbot_act,
-	'cartpole': cartpole_act
-}
+		# Save self.value_ss_approx_models
+		pickle.dump(self.value_ss_approx_models, open(os.path.join(self.model_logdir, "value_ss", "value_ss_approx_models.pkl"), "wb"))
+
+	
+	def restore_controller_state(self):
+		# Reload safe set model and data
+		self.ss_approx_model = pickle.load( open(os.path.join(self.model_logdir, "ss_approx_model.pkl"), "rb") )
+		self.all_safe_states = pickle.load( open(os.path.join(self.model_logdir, "all_safe_states.pkl"), "rb") )
+
+		safe_set_data = pickle.load(open(os.path.join(self.model_logdir, "ss_data.pkl"), "rb"))
+		self.SS = [SafeSet(state_data=state_data, cost_data=cost_data) for (state_data, cost_data) in safe_set_data]
+
+		value_models_base_dir = os.path.join(self.model_logdir, "value")
+		self.value_funcs = []
+		value_func_data = pickle.load(open(os.path.join(self.model_logdir, "value_data.pkl"), "rb"))
+		value_folder_list = [folder for folder in os.listdir(value_models_base_dir) if folder.startswith("value")]
+		value_folder_list.sort(key=lambda value_folder: int(value_folder.split('_')[-1]))
+
+		g = tf.Graph()
+		with g.as_default():
+			for i, value_folder in enumerate(value_folder_list):
+				print("huge")
+				print(value_folder)
+				state_data = value_func_data[i][0]
+				value_data = value_func_data[i][1]
+				self.value_funcs.append(ValueFunc(self.value_approx_mode, load_model=True, model_dir=os.path.join(value_models_base_dir, value_folder), state_data=state_data, value_data=value_data))
+				print("industries")
+
+		print("GOT HERE")
+
+		self.value_ss_approx_models = pickle.load( open(os.path.join(self.model_logdir, "value_ss", "value_ss_approx_models.pkl"), "rb") )
+		print("DONE RESTORING")
+

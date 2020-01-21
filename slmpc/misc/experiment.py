@@ -3,18 +3,68 @@ import itertools
 import os
 import os.path as osp
 import pickle
-
+import concurrent.futures
+import gym
+import time
 import numpy as np
+
+from slmpc.controllers import LMPC, RandomController
+
+def get_sample(start_state, exp_cfg):
+	data = {
+		'states': [],
+		'actions': [],
+		'costs': []
+	}
+
+	local_env = gym.make(exp_cfg.env_name)
+	if exp_cfg.controller_type == "random":
+		local_controller = RandomController(exp_cfg)
+	elif exp_cfg.controller_type == "lmpc_expect":
+		local_controller = LMPC(exp_cfg)
+	else:
+		raise Exception("Unsupported controller.")
+
+	local_controller.restore_controller_state()
+	obs = local_env.reset()
+
+	if start_state is not None: # multi-start case
+		local_env.set_state(start_state)
+
+	data['states'].append(obs)
+	done = False
+	while not done:
+		print("ACTED")
+		action = local_controller.act(obs)
+		obs, cost, done, _ = local_env.step(action)
+		data['states'].append(obs)
+		data['actions'].append(action)
+		data['costs'].append(cost)
+	data['total_cost'] = np.sum(data['costs'])
+	data['values'] = np.cumsum(data['costs'][::-1])[::-1]
+	return data
+
+
+def get_samples_parallel(valid_starts, exp_cfg):
+	with concurrent.futures.ProcessPoolExecutor() as executor:
+		f_list = [executor.submit(get_sample, valid_starts[p1], exp_cfg) for p1 in range(len(valid_starts))]
+		return [f.result() for f in f_list]
 
 class Experiment:
 
-	def __init__(self, controller, env, exp_cfg):
-		self.controller = controller
+	def __init__(self, env, exp_cfg):
+		if exp_cfg.controller_type == "random":
+			self.controller = RandomController(exp_cfg)
+		elif exp_cfg.controller_type == "lmpc_expect":
+			self.controller = LMPC(exp_cfg)
+		else:
+			raise Exception("Unsupported controller.")
+
 		self.env = env
 		self.exp_cfg = exp_cfg
-
 		self.samples_per_iteration = self.exp_cfg.samples_per_iteration
 		self.num_iterations = self.exp_cfg.num_iterations
+		self.parallelize_rollouts = exp_cfg.parallelize_rollouts
 
 		self.log_all_data = exp_cfg.log_all_data
 		self.save_dir = self.exp_cfg.save_dir
@@ -76,17 +126,25 @@ class Experiment:
 
 		self.all_samples.append(demo_samples)
 		self.controller.train(demo_samples)
+		self.controller.save_controller_state()
 
 		for i in range(self.num_iterations):
 			print("##### Iteration %d #####"%i)
 
-			samples = []
-			for _ in range(self.samples_per_iteration):
-				valid_start = self.controller.compute_valid_start_state()
-				samples.append(self.sample(valid_start))
+			if not self.parallelize_rollouts:
+				samples = []
+				for _ in range(self.samples_per_iteration):
+					valid_start = self.controller.compute_valid_start_state()
+					samples.append(self.sample(valid_start))
+			else:
+				 valid_starts = [self.controller.compute_valid_start_state() for _ in range(self.samples_per_iteration)]
+				 samples = get_samples_parallel(valid_starts, self.exp_cfg)
+				 print("SAMPLES", samples)
+				 assert(False)
 
 			self.all_samples.append(samples)
 			self.controller.train(samples)
+			self.controller.save_controller_state()
 
 			mean_cost = np.mean([s['total_cost'] for s in samples])
 			self.mean_costs.append(mean_cost)
