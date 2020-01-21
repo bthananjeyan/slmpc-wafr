@@ -69,6 +69,18 @@ class PointBot(Env, utils.EzPickle):
             print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
         return self.state, cur_cost, self.done, {}
 
+    def vectorized_step(self, s, a):
+        state = np.tile(s, (len(a), 1)).T
+        trajectories = [state]
+        for t in range(a.shape[1]):
+            next_state = self._next_state(state, a[:,t].T)
+            trajectories.append(next_state)
+            state = next_state
+        costs = []
+        for t in range(a.shape[1]):
+            costs.append(self.step_cost(trajectories[t].T, a[:,t]))
+        return np.stack(trajectories, axis=1).T, np.array(costs).T
+
     def reset(self):
         self.state = self.start_state + np.random.randn(4)
         self.time = 0
@@ -87,12 +99,15 @@ class PointBot(Env, utils.EzPickle):
         return self.cost
 
     def _next_state(self, s, a):
-        return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * truncnorm.rvs(-1, 1, size=len(s))
+        return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * truncnorm.rvs(-1, 1, size=s.shape)
 
     # TODO: make this not dense cost at some point
     def step_cost(self, s, a):
         if HARD_MODE:
-            return int(np.linalg.norm(np.subtract(GOAL_STATE, s)) > GOAL_THRESH)
+            if len(s.shape) == 2:
+                return (np.linalg.norm(np.subtract(GOAL_STATE, s), axis=1) > GOAL_THRESH).astype(float)
+            else:
+                return (np.linalg.norm(np.subtract(GOAL_STATE, s)) > GOAL_THRESH).astype(float)
         return np.linalg.norm(np.subtract(GOAL_STATE, s))
 
     def values(self):

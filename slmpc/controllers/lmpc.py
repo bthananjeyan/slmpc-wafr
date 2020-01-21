@@ -225,16 +225,7 @@ class LMPC(Controller):
 		# Keep setting state to obs and simulating actions: # TODO: parallelize
 		if not self.parallelize_cem:
 			start = time.perf_counter()	
-			costs = np.zeros((self.optimizer_params["popsize"], self.optimizer_params["plan_hor"]))
-			pred_trajs = np.zeros((self.optimizer_params["popsize"], self.optimizer_params["plan_hor"]+1, len(obs)))
-			for i in range(self.optimizer_params["popsize"]):
-				self.cem_env.reset()
-				self.cem_env.set_state(obs)
-				for j in range(self.optimizer_params["plan_hor"]):
-					self.cem_env.step(ac_seqs[i, j])
-
-				pred_trajs[i] = np.array(self.cem_env.get_hist())
-				costs[i] = np.array(self.cem_env.get_costs())
+			pred_trajs, costs = self.cem_env.vectorized_step(obs, ac_seqs)
 			finish = time.perf_counter()
 			# print("Time Taken Serially: " + str(round(finish-start, 2)))
 		else:
