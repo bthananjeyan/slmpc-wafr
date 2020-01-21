@@ -58,8 +58,7 @@ class LMPC(Controller):
 		self.value_approx_mode = cfg.value_approx_mode
 
 		if self.soln_mode == "cem":
-			# self.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 10, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for pointbot?
-			self.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for cartpole
+			self.optimizer_params = cfg.optimizer_params
 			self.alpha_thresh = cfg.alpha_thresh
 			self.ac_lb = cfg.ac_lb
 			self.ac_ub = cfg.ac_ub
@@ -227,16 +226,7 @@ class LMPC(Controller):
 		# Keep setting state to obs and simulating actions: # TODO: parallelize
 		if not self.parallelize_cem:
 			start = time.perf_counter()	
-			costs = np.zeros((self.optimizer_params["popsize"], self.optimizer_params["plan_hor"]))
-			pred_trajs = np.zeros((self.optimizer_params["popsize"], self.optimizer_params["plan_hor"]+1, len(obs)))
-			for i in range(self.optimizer_params["popsize"]):
-				self.cem_env.reset()
-				self.cem_env.set_state(obs)
-				for j in range(self.optimizer_params["plan_hor"]):
-					self.cem_env.step(ac_seqs[i, j])
-
-				pred_trajs[i] = np.array(self.cem_env.get_hist())
-				costs[i] = np.array(self.cem_env.get_costs())
+			pred_trajs, costs = self.cem_env.vectorized_step(obs, ac_seqs)
 			finish = time.perf_counter()
 			# print("Time Taken Serially: " + str(round(finish-start, 2)))
 		else:

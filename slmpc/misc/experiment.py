@@ -108,6 +108,7 @@ class Experiment:
 		return data
 
 	# TODO: build something to create visualizations of safe set
+	# I would put this in the safe_set file.
 	def run(self):
 		self.reset()
 		# First train on demos
