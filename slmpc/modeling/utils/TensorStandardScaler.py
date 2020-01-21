@@ -44,8 +44,8 @@ class TensorStandardScaler:
         sigma = np.std(data, axis=0, keepdims=True)
         sigma[sigma < 1e-12] = 1.0
 
-        self.mu.load(mu)
-        self.sigma.load(sigma)
+        self.mu.assign(mu)
+        self.sigma.assign(sigma)
         self.fitted = True
         self.cache()
 
@@ -89,5 +89,5 @@ class TensorStandardScaler:
 
         Returns: None.
         """
-        self.mu.load(self.cached_mu)
-        self.sigma.load(self.cached_sigma)
+        self.mu.assign(self.cached_mu)
+        self.sigma.assign(self.cached_sigma)

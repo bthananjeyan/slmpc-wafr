@@ -210,7 +210,7 @@ class BNN:
                 params_dict = loadmat(os.path.join(self.model_dir, "%s.mat" % self.name))
                 all_vars = self.nonoptvars + self.optvars
                 for i, var in enumerate(all_vars):
-                    var.load(params_dict[str(i)])
+                    var.assign(params_dict[str(i)])
         self.all_vars = self.nonoptvars + self.optvars
         self.finalized = True
 

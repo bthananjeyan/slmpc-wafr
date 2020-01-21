@@ -38,7 +38,7 @@ class ValueFunc:
 		elif approx_mode == "pe":
 			self.graph = tf.Graph()
 			with self.graph.as_default():
-				self.sess = tf.Session()
+				self.sess = tf.compat.v1.Session()
 				# TODO: store value func params in a dotmap config
 				self.model = value_pe_constructor(self.sess, load_model, model_dir)
 		else:
