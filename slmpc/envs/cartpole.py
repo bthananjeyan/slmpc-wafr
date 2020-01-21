@@ -101,8 +101,8 @@ class CartPole(Env, utils.EzPickle):
         self.t += self.dt
         self.hist.append(self.state)
         self.done = HORIZON <= self.time
-        # if not self.cem_env:
-            # print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
+        if not self.cem_env:
+            print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
         return self.state, cur_cost, self.done, {}
 
     def reset(self):
@@ -124,6 +124,8 @@ class CartPole(Env, utils.EzPickle):
 
     # TODO: make this not dense cost at some point
     def step_cost(self, s, a):
+        if HARD_MODE:
+            return float(np.abs(s[2] - GOAL_STATE[2]) > GOAL_THRESH)
         return np.abs(s[2] - GOAL_STATE[2])
 
     def values(self):
