@@ -313,7 +313,9 @@ class LMPC(Controller):
 		pickle.dump(self.value_ss_approx_models, open(osp.join(desired_path, "value_ss_approx_models.pkl"), "wb"))
 
 	
-	def restore_controller_state(self):
+	def restore_controller_state(self, model_logdir=None):
+		if model_logdir is not None:
+			self.model_logdir = model_logdir
 		# Reload safe set model and data
 		self.ss_approx_model = pickle.load( open(os.path.join(self.model_logdir, "ss_approx_model.pkl"), "rb") )
 		self.all_safe_states = pickle.load( open(os.path.join(self.model_logdir, "all_safe_states.pkl"), "rb") )

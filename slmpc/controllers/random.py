@@ -5,7 +5,7 @@ from .safe_set import SafeSet
 
 class RandomController(Controller):
 
-	def __init__(self, env):
+	def __init__(self, cfg):
 		self.env = cfg.env
 
 	def act(self, state):
@@ -15,4 +15,7 @@ class RandomController(Controller):
 		self.env.reset()
 
 	def train(self, samples):
+		return
+
+	def save_controller_state(self):
 		return
