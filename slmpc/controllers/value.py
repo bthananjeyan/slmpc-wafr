@@ -37,9 +37,11 @@ class ValueFunc:
 		elif approx_mode == "knn":
 			self.model = knn(n_neighbors=5) # TODO: think about n_neighbors
 		elif approx_mode == "pe":
-			self.sess = tf.Session()
-			# TODO: store value func params in a dotmap config
-			self.model = value_pe_constructor(self.sess, load_model, model_dir)
+			self.graph = tf.Graph()
+			with self.graph.as_default():
+				self.sess = tf.Session()
+				# TODO: store value func params in a dotmap config
+				self.model = value_pe_constructor(self.sess, load_model, model_dir)
 		else:
 			raise("Unsupported value approximation mode")
 

@@ -13,6 +13,7 @@ import gym
 import time
 import pickle
 import os
+import os.path as osp
 import errno
 import tensorflow as tf
 
@@ -47,6 +48,9 @@ class LMPC(Controller):
 		self.ss_approx_mode = cfg.ss_approx_mode
 		self.variable_start_state = cfg.variable_start_state
 		self.model_logdir = cfg.model_logdir
+
+		if not os.path.exists(self.model_logdir):
+			os.makedirs(self.model_logdir)
 
 		if self.ss_approx_mode == "knn":
 			self.ss_approx_model = knn(n_neighbors=1)
@@ -303,7 +307,10 @@ class LMPC(Controller):
 		pickle.dump([v.get_data() for v in self.value_funcs], open(os.path.join(self.model_logdir, "value_data.pkl"), "wb"))
 
 		# Save self.value_ss_approx_models
-		pickle.dump(self.value_ss_approx_models, open(os.path.join(self.model_logdir, "value_ss", "value_ss_approx_models.pkl"), "wb"))
+		desired_path = osp.join(self.model_logdir, "value_ss")
+		if not os.path.exists(desired_path):
+			os.makedirs(desired_path)
+		pickle.dump(self.value_ss_approx_models, open(osp.join(desired_path, "value_ss_approx_models.pkl"), "wb"))
 
 	
 	def restore_controller_state(self):

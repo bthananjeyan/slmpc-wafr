@@ -15,7 +15,7 @@ def pointbot_config(exp_cfg):
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 3
 	exp_cfg.parallelize_cem = False
-	exp_cfg.parallelize_rollouts = True
+	exp_cfg.parallelize_rollouts = False
 	exp_cfg.model_logdir = 'model_logs'
 	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for pointbot?
 	return PointBot()
