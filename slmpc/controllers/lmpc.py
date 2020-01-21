@@ -55,8 +55,7 @@ class LMPC(Controller):
 		self.value_approx_mode = cfg.value_approx_mode
 
 		if self.soln_mode == "cem":
-			self.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 10, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for pointbot?
-			# self.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": 5} These kind of work for cartpole
+			self.optimizer_params = cfg.optimizer_params
 			self.alpha_thresh = cfg.alpha_thresh
 			self.ac_lb = self.env.action_space.low
 			self.ac_ub = self.env.action_space.high

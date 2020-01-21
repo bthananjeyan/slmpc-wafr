@@ -17,6 +17,7 @@ def pointbot_config(exp_cfg):
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 3
 	exp_cfg.parallelize_cem = False
+	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for pointbot?
 
 def cartpole_config(exp_cfg):
 	exp_cfg.env = CartPole()
@@ -29,6 +30,7 @@ def cartpole_config(exp_cfg):
 	exp_cfg.ss_approx_mode = "knn"
 	exp_cfg.variable_start_state = False
 	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
+	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for cartpole
 
 def config(env_name, controller_type):
 	exp_cfg = DotMap
