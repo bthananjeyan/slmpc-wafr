@@ -163,8 +163,8 @@ class LMPC(Controller):
 		else:
 			return pred_traj, True
 
-	def change_goal(self, goal_state):
-		if self.env.goal_state == goal_state:
+	def set_goal(self, goal_state):
+		if self.cem_env.goal_state == goal_state:
 			return
 		self.cem_env.set_goal(goal_state)
 		goal_fn = self.cem_env.goal_fn

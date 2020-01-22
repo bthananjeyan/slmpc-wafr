@@ -58,9 +58,9 @@ def config(env_name, controller_type, exp_id):
 	exp_cfg.controller_type = controller_type
 	exp_cfg.log_all_data = False
 
-	if exp_id == '1':
+	if exp_id == 'p1':
 		pointbot_exp1_config(exp_cfg)
-	elif exp_id == '2':
+	elif exp_id == 'p2':
 		pointbot_exp2_config(exp_cfg)
 	else:
 		raise Exception("Unknown Experiment ID.")
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 	parser.add_argument('-ctrl', type=str, default="random",
 						help='Controller name: select from [random, lmpc_expect]')
 	parser.add_argument('-exp_id', type=str, default="1",
-						help='Experiment ID: select from [1]')
+						help='Experiment ID: select from [p1, p2]')
 	args = parser.parse_args()
 
 	exp_cfg, env = config(args.env_name, args.ctrl, args.exp_id)

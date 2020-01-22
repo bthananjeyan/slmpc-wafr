@@ -10,7 +10,7 @@ import numpy as np
 
 from slmpc.controllers import LMPC, RandomController
 
-def get_sample(start_state, exp_cfg):
+def get_sample(start_state, exp_cfg, goal_state=None):
 	data = {
 		'states': [],
 		'actions': [],
@@ -26,6 +26,8 @@ def get_sample(start_state, exp_cfg):
 		raise Exception("Unsupported controller.")
 
 	local_controller.restore_controller_state()
+	if goal_state is not None:
+		local_env.set_goal(goal_state)
 	obs = local_env.reset()
 
 	if start_state is not None: # multi-start case
@@ -44,9 +46,9 @@ def get_sample(start_state, exp_cfg):
 	return data
 
 
-def get_samples_parallel(valid_starts, exp_cfg):
+def get_samples_parallel(valid_starts, exp_cfg, goal_state):
 	with concurrent.futures.ProcessPoolExecutor() as executor:
-		f_list = [executor.submit(get_sample, valid_starts[p1], exp_cfg) for p1 in range(len(valid_starts))]
+		f_list = [executor.submit(get_sample, valid_starts[p1], exp_cfg, goal_state) for p1 in range(len(valid_starts))]
 		return [f.result() for f in f_list]
 
 class Experiment:
@@ -57,6 +59,8 @@ class Experiment:
 		self.samples_per_iteration = self.exp_cfg.samples_per_iteration
 		self.num_iterations = self.exp_cfg.num_iterations
 		self.parallelize_rollouts = exp_cfg.parallelize_rollouts
+
+		self.goal_schedule = exp_cfg.goal_schedule
 
 		self.log_all_data = exp_cfg.log_all_data
 		self.save_dir = self.exp_cfg.save_dir
@@ -131,6 +135,8 @@ class Experiment:
 
 		for i in range(self.num_iterations):
 			print("##### Iteration %d #####"%i)
+			self.controller.set_goal(self.goal_schedule(i))
+			self.env.set_goal(self.goal_schedule(i))
 
 			if not self.parallelize_rollouts:
 				samples = []
@@ -139,7 +145,7 @@ class Experiment:
 					samples.append(self.sample(valid_start))
 			else:
 				 valid_starts = [self.controller.compute_valid_start_state() for _ in range(self.samples_per_iteration)]
-				 samples = get_samples_parallel(valid_starts, self.exp_cfg)
+				 samples = get_samples_parallel(valid_starts, self.exp_cfg, self.goal_schedule(i))
 				 # assert(False)
 
 			self.all_samples.append(samples)
