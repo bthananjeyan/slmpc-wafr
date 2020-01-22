@@ -71,7 +71,7 @@ class ValueFunc:
 		elif self.approx_mode == "knn":
 			self.model.fit(self.state_fit_data)
 		elif self.approx_mode == "pe":
-			self.model.train(self.state_fit_data, self.value_fit_data[...,np.newaxis], epochs=100) # TODO: change to 100 back
+			self.model.train(self.state_fit_data, self.value_fit_data[...,np.newaxis], epochs=10) # TODO: change to 100 back
 		else:
 			raise("Unsupported value approximation mode")
 

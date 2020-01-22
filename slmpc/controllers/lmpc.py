@@ -166,7 +166,9 @@ class LMPC(Controller):
 				for _ in range(self.n_samples_start_state_opt):
 					traj, traj_valid = self.traj_opt(sampled_start, desired_start)
 					if traj_valid:
-						valid_starts.append(traj[-self.optimizer_params["plan_hor"]])
+						valid_start_section = traj[-self.optimizer_params["plan_hor"]:]
+						valid_start = valid_start_section[np.random.randint(len(valid_start_section))]
+						valid_starts.append(valid_start)
 						valid_trajs.append(traj)
 
 				print("NUM VALIDS", len(valid_starts))
