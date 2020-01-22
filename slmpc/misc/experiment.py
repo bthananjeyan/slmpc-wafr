@@ -52,13 +52,6 @@ def get_samples_parallel(valid_starts, exp_cfg):
 class Experiment:
 
 	def __init__(self, env, exp_cfg):
-		if exp_cfg.controller_type == "random":
-			self.controller = RandomController(exp_cfg)
-		elif exp_cfg.controller_type == "lmpc_expect":
-			self.controller = LMPC(exp_cfg)
-		else:
-			raise Exception("Unsupported controller.")
-
 		self.env = env
 		self.exp_cfg = exp_cfg
 		self.samples_per_iteration = self.exp_cfg.samples_per_iteration
@@ -70,12 +63,20 @@ class Experiment:
 		self.demo_path = self.exp_cfg.demo_path
 		if not os.path.exists(self.save_dir):
 			os.makedirs(self.save_dir)
-		self.save_dir = osp.join(self.save_dir, datetime.now().strftime("%Y-%m-%d--%H:%M:%S"))
+		self.exp_cfg.save_dir = self.save_dir = osp.join(self.save_dir, datetime.now().strftime("%Y-%m-%d--%H:%M:%S"))
 		os.makedirs(self.save_dir)
+
+		if exp_cfg.controller_type == "random":
+			self.controller = RandomController(exp_cfg)
+		elif exp_cfg.controller_type == "lmpc_expect":
+			self.controller = LMPC(exp_cfg)
+		else:
+			raise Exception("Unsupported controller.")
 
 	def reset(self):
 		self.all_samples = []
 		self.mean_costs = []
+		self.cost_stds = []
 
 	def dump_logs(self):
 		np.save(osp.join(self.save_dir, "mean_costs.npy"), self.mean_costs)
@@ -145,9 +146,11 @@ class Experiment:
 
 			mean_cost = np.mean([s['total_cost'] for s in samples])
 			self.mean_costs.append(mean_cost)
+			self.cost_stds.append(np.std([s['total_cost'] for s in samples]))
 			print("Average Cost: %f"%mean_cost)
 			print("Individual Costs:")
 			print([s['total_cost'] for s in samples])
+			print([s['states'][-1] for s in samples])
 
 			self.controller.train(samples)
 			self.controller.save_controller_state()
@@ -156,11 +159,18 @@ class Experiment:
 
 	@property
 	def stats(self):
-		return self.mean_costs
+		return np.array(self.mean_costs), np.add(self.mean_costs, self.cost_stds), np.subtract(self.mean_costs, self.cost_stds)
 
 	def plot_results(self, save_file=None, show=True):
+		def plot_mean_and_CI(mean, ub, lb, color_mean=None, color_shading=None):
+			# plot the shaded range of the confidence intervals
+			plt.fill_between(range(mean.shape[0]), ub, lb,
+							 color=color_shading, alpha=.5)
+			# plot the mean on top
+			plt.plot(mean, color_mean)
 		import matplotlib.pyplot as plt
-		plt.plot(self.stats)
+		mean, ub, lb = self.stats
+		plot_mean_and_CI(mean, ub, lb, 'b', 'b')
 		plt.title("Mean Trajectory Cost vs. Iteration")
 		plt.xlabel("Iteration")
 		plt.ylabel("Trajectory Cost")

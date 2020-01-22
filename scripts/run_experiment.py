@@ -1,6 +1,9 @@
+import multiprocessing
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 import argparse
 from dotmap import DotMap
-import multiprocessing
 
 from slmpc.misc.experiment import Experiment
 from slmpc.envs.pointbot import PointBot
@@ -37,7 +40,7 @@ def cartpole_config(exp_cfg):
 
 def config(env_name, controller_type):
 	exp_cfg = DotMap()
-	exp_cfg.samples_per_iteration = 100
+	exp_cfg.samples_per_iteration = 5
 	exp_cfg.num_iterations = 5
 	exp_cfg.controller_type = controller_type
 	exp_cfg.log_all_data = False

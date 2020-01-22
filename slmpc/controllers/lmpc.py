@@ -47,7 +47,7 @@ class LMPC(Controller):
 		self.soln_mode = cfg.soln_mode
 		self.ss_approx_mode = cfg.ss_approx_mode
 		self.variable_start_state = cfg.variable_start_state
-		self.model_logdir = cfg.model_logdir
+		self.model_logdir = osp.join(cfg.save_dir, cfg.model_logdir)
 
 		if not os.path.exists(self.model_logdir):
 			os.makedirs(self.model_logdir)
@@ -334,7 +334,8 @@ class LMPC(Controller):
 			for i, value_folder in enumerate(value_folder_list):
 				state_data = value_func_data[i][0]
 				value_data = value_func_data[i][1]
-				self.value_funcs.append(ValueFunc(self.value_approx_mode, load_model=True, model_dir=os.path.join(value_models_base_dir, value_folder), state_data=state_data, value_data=value_data))
+				cost_data = value_func_data[i][2]
+				self.value_funcs.append(ValueFunc(self.value_approx_mode, load_model=True, model_dir=os.path.join(value_models_base_dir, value_folder), state_data=state_data, value_data=value_data, cost_data=cost_data))
 
 		self.value_ss_approx_models = pickle.load( open(os.path.join(self.model_logdir, "value_ss", "value_ss_approx_models.pkl"), "rb") )
 
