@@ -15,6 +15,7 @@ from gym import utils
 from gym.spaces import Box
 from scipy.stats import truncnorm
 
+from slmpc.controllers.utils import euclidean_goal_fn
 from .pointbot_const import *
 
 def process_action(a):
@@ -40,12 +41,13 @@ class PointBot(Env, utils.EzPickle):
         self.hist = self.cost = self.done = self.time = self.state = None
         self.A = np.eye(4)
         self.A[2,3] = self.A[0,1] = 1
-        self.A[1,1] = self.A[3,3] = 1
+        self.A[1,1] = self.A[3,3] = 1 - AIR_RESIST
         self.B = np.array([[0,0], [1,0], [0,0], [0,1]])
         self.horizon = HORIZON
         self.action_space = Box(-np.ones(2) * MAX_FORCE, np.ones(2) * MAX_FORCE)
         self.observation_space = Box(-np.ones(4) * np.float('inf'), np.ones(4) * np.float('inf'))
         self.start_state = START_STATE
+        self.goal_state = GOAL_STATE
         self.name = "pointbot"
         self.env_name = 'PointBot-v0'
         self.cem_env = cem_env
@@ -98,6 +100,13 @@ class PointBot(Env, utils.EzPickle):
     def get_costs(self):
         return self.cost
 
+    def set_goal(self, goal_state):
+        self.goal_state = goal_state
+
+    @property
+    def goal_fn(self):
+        return euclidean_goal_fn(self.goal_state, GOAL_THRESH)
+
     def _next_state(self, s, a):
         return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * truncnorm.rvs(-1, 1, size=s.shape)
 
@@ -105,10 +114,10 @@ class PointBot(Env, utils.EzPickle):
     def step_cost(self, s, a):
         if HARD_MODE:
             if len(s.shape) == 2:
-                return (np.linalg.norm(np.subtract(GOAL_STATE, s), axis=1) > GOAL_THRESH).astype(float)
+                return (np.linalg.norm(np.subtract(self.goal_state, s), axis=1) > GOAL_THRESH).astype(float)
             else:
-                return (np.linalg.norm(np.subtract(GOAL_STATE, s)) > GOAL_THRESH).astype(float)
-        return np.linalg.norm(np.subtract(GOAL_STATE, s))
+                return (np.linalg.norm(np.subtract(self.goal_state, s)) > GOAL_THRESH).astype(float)
+        return np.linalg.norm(np.subtract(self.goal_state, s))
 
     def values(self):
         return np.cumsum(np.array(self.cost)[::-1])[::-1]
@@ -125,7 +134,7 @@ class PointBot(Env, utils.EzPickle):
 
     # Returns whether a state is stable or not
     def is_stable(self, s):
-        return np.linalg.norm(np.subtract(GOAL_STATE, s)) <= GOAL_THRESH
+        return np.linalg.norm(np.subtract(self.goal_state, s)) <= GOAL_THRESH
 
     def teacher(self, sess=None):
         return PointBotTeacher()

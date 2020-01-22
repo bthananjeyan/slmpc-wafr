@@ -1,21 +1,22 @@
-import numpy as np
-
-from .controller import Controller
-from .safe_set import SafeSet
-from .value import ValueFunc
-import scipy.stats as stats
-import itertools
-from sklearn.neighbors import NearestNeighbors as knn
-from scipy.spatial import Delaunay
-
 import concurrent.futures
 import gym
-import time
-import pickle
+import errno
+import itertools
 import os
 import os.path as osp
-import errno
+import pickle
+import time
+
+import numpy as np
+from scipy.spatial import Delaunay
+import scipy.stats as stats
+from sklearn.neighbors import NearestNeighbors as knn
 import tensorflow as tf
+
+from .controller import Controller
+from .safe_set import SafeSet, create_ss_new_goal
+from .value import ValueFunc
+
 
 def get_preds(acs, env_name, state):
 	local_env = gym.make(env_name, cem_env=True)
@@ -160,7 +161,45 @@ class LMPC(Controller):
 		if invalid:
 			return pred_traj, False
 		else:
-			return pred_traj, True 
+			return pred_traj, True
+
+	def change_goal(self, goal_state):
+		if self.env.goal_state == goal_state:
+			return
+		self.cem_env.set_goal(goal_state)
+		goal_fn = self.cem_env.goal_fn
+		new_values = []
+		for value in self.value_funcs:
+			new_values.append(create_value_function_new_goal(value, goal_fn))
+		self.value_funcs = new_values
+		for value in self.value_funcs:
+			value.fit()
+		new_ss = []
+		for ss in self.SS:
+			new_ss.append(create_ss_new_goal(ss, goal_fn))
+		self.SS = new_ss
+		self.value_ss_approx_models =[]
+		for ss in self.SS:
+			if self.ss_approx_mode == "convex_hull":
+				value_ss_approx_model = Delaunay(list(itertools.chain.from_iterable(ss.state_data)))
+				self.value_ss_approx_models.append(value_ss_approx_model)
+			elif self.ss_approx_mode == "knn":
+				value_ss_approx_model = knn(n_neighbors=1)
+				value_ss_approx_model.fit(list(itertools.chain.from_iterable(ss.state_data)))
+				self.value_ss_approx_models.append(value_ss_approx_model)	
+			else:
+				raise("Unsupported SS Approx Mode")
+
+		all_safe_states = list(itertools.chain.from_iterable([s.state_data for s in self.SS]))
+		self.all_safe_states= list(itertools.chain.from_iterable(all_safe_states))
+
+		if self.ss_approx_mode == "knn":
+			self.ss_approx_model.fit(np.array(self.all_safe_states))
+		elif self.ss_approx_mode == "convex_hull":
+			self.ss_approx_model = Delaunay(self.all_safe_states)
+		else:
+			raise("Unsupported SS Approx Mode")
+
 
 	def run_cem(self, obs, mean, var, traj_opt_mode=False):
 		if traj_opt_mode:

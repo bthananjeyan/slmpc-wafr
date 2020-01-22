@@ -1,4 +1,20 @@
 # TODO: add goal conditioned filter or something
+from .utils import process_sample_for_goal
+
+def create_ss_new_goal(ss_old, goal_fn):
+	data = ss_old.get_data()
+	state_data, cost_data = [], []
+	for i in range(len(data[0])):
+		sample = {
+			'states': data[0][i],
+			'costs': data[1][i]
+		}
+		new_sample = process_sample_for_goal(sample, goal_fn)
+		state_data.append(new_sample['states'])
+		cost_data.append(new_sample['costs'])
+	return SafeSet(state_data=state_data, cost_data=cost_data)
+
+
 class SafeSet:
 	def __init__(self, state_data=[], cost_data=[]):
 		self.state_data = state_data # nsamples X horizon X state_dim

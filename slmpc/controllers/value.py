@@ -6,6 +6,7 @@ from sklearn.neighbors import NearestNeighbors as knn
 from sklearn.linear_model import Ridge
 import tensorflow as tf
 
+from slmpc.controllers.utils import process_sample_for_goal
 from slmpc.modeling.layers import FC
 from slmpc.modeling.models import BNN
 
@@ -23,6 +24,20 @@ def value_pe_constructor(sess, load_model, model_dir):
 
 	model.finalize(tf.compat.v1.train.AdamOptimizer, {"learning_rate": 0.001}, suffix = "val")
 	return model
+
+def create_value_function_new_goal(v_old, goal_fn):
+	data = v_old.get_data()
+	state_data, value_data, cost_data = [], [], []
+	for i in range(len(data[0])):
+		sample = {
+			'states': data[0][i],
+			'costs': data[2][i]
+		}
+		new_sample = process_sample_for_goal(sample, goal_fn)
+		state_data.append(new_sample['states'])
+		value_data.append(new_sample['values'])
+		cost_data.append(new_sample['costs'])
+	return ValueFunc(v_old.approx_mode, load_model=False, model_dir=None, state_data=state_data, value_data=value_data, cost_data=cost_data)
 
 # TODO: add goal conditioned filter or something
 class ValueFunc:
@@ -57,9 +72,10 @@ class ValueFunc:
 		self.value_data.append(sample['values'])
 		self.cost_data.append(sample['costs'])
 
-	def load_data(self, state_data, value_data):
+	def load_data(self, state_data, value_data, cost_data):
 		self.state_data = state_data
 		self.value_data = value_data
+		self.cost_data = cost_data
 
 	def get_data(self):
 		return (self.state_data, self.value_data, self.cost_data)
@@ -83,7 +99,7 @@ class ValueFunc:
 					self.cost_fit_data = np.concatenate(self.cost_data, axis=0)
 					targets = self.value(self.next_state_fit_data) + self.cost_fit_data
 					self.model.train(self.state_fit_data, targets[...,np.newaxis], epochs=10)
-				for i in range(10):
+				for i in range(5):
 					td_iteration()
 		else:
 			raise("Unsupported value approximation mode")

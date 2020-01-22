@@ -1,6 +1,6 @@
 import multiprocessing
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import argparse
 from dotmap import DotMap
@@ -9,6 +9,7 @@ from slmpc.misc.experiment import Experiment
 from slmpc.envs.pointbot import PointBot
 from slmpc.envs.cartpole import CartPole
 from slmpc.controllers import LMPC, RandomController
+from slmpc.misc import NoSwitchSchedule, SingleSwitchSchedule
 
 def pointbot_config(exp_cfg):
 	exp_cfg.save_dir = "logs/pointbot"
@@ -38,12 +39,31 @@ def cartpole_config(exp_cfg):
 	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for cartpole
 	return CartPole()
 
-def config(env_name, controller_type):
-	exp_cfg = DotMap()
+
+def pointbot_exp1_config(exp_cfg):
 	exp_cfg.samples_per_iteration = 5
 	exp_cfg.num_iterations = 5
+	from slmpc.envs.pointbot_const import GOAL_STATE
+	exp_cfg.goal_schedule = NoSwitchSchedule(None, GOAL_STATE)
+
+def pointbot_exp1_config(exp_cfg):
+	exp_cfg.samples_per_iteration = 5
+	exp_cfg.num_iterations = 5
+	from slmpc.envs.pointbot_const import GOAL_STATE
+	exp_cfg.goal_schedule = SingleSwitchSchedule(2, [GOAL_STATE, GOAL_STATE])
+
+
+def config(env_name, controller_type, exp_id):
+	exp_cfg = DotMap()
 	exp_cfg.controller_type = controller_type
 	exp_cfg.log_all_data = False
+
+	if exp_id == '1':
+		pointbot_exp1_config(exp_cfg)
+	elif exp_id == '2':
+		pointbot_exp2_config(exp_cfg)
+	else:
+		raise Exception("Unknown Experiment ID.")
 
 	if env_name == "pointbot":
 		env = pointbot_config(exp_cfg)
@@ -65,9 +85,11 @@ if __name__ == '__main__':
 						help='Environment name: select from [pointbot, cartpole]')
 	parser.add_argument('-ctrl', type=str, default="random",
 						help='Controller name: select from [random, lmpc_expect]')
+	parser.add_argument('-exp_id', type=str, default="1",
+						help='Experiment ID: select from [1]')
 	args = parser.parse_args()
 
-	exp_cfg, env = config(args.env_name, args.ctrl)
+	exp_cfg, env = config(args.env_name, args.ctrl, args.exp_id)
 	experiment = Experiment(env, exp_cfg)
 	experiment.run()
 	# experiment.plot_results()
