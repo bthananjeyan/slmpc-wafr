@@ -47,7 +47,7 @@ class LMPC(Controller):
 		self.soln_mode = cfg.soln_mode
 		self.ss_approx_mode = cfg.ss_approx_mode
 		self.variable_start_state = cfg.variable_start_state
-		self.model_logdir = cfg.model_logdir
+		self.model_logdir = osp.join(cfg.save_dir, cfg.model_logdir)
 
 		if not os.path.exists(self.model_logdir):
 			os.makedirs(self.model_logdir)

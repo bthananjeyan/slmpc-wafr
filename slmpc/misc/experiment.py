@@ -52,13 +52,6 @@ def get_samples_parallel(valid_starts, exp_cfg):
 class Experiment:
 
 	def __init__(self, env, exp_cfg):
-		if exp_cfg.controller_type == "random":
-			self.controller = RandomController(exp_cfg)
-		elif exp_cfg.controller_type == "lmpc_expect":
-			self.controller = LMPC(exp_cfg)
-		else:
-			raise Exception("Unsupported controller.")
-
 		self.env = env
 		self.exp_cfg = exp_cfg
 		self.samples_per_iteration = self.exp_cfg.samples_per_iteration
@@ -70,8 +63,15 @@ class Experiment:
 		self.demo_path = self.exp_cfg.demo_path
 		if not os.path.exists(self.save_dir):
 			os.makedirs(self.save_dir)
-		self.save_dir = osp.join(self.save_dir, datetime.now().strftime("%Y-%m-%d--%H:%M:%S"))
+		self.exp_cfg.save_dir = self.save_dir = osp.join(self.save_dir, datetime.now().strftime("%Y-%m-%d--%H:%M:%S"))
 		os.makedirs(self.save_dir)
+
+		if exp_cfg.controller_type == "random":
+			self.controller = RandomController(exp_cfg)
+		elif exp_cfg.controller_type == "lmpc_expect":
+			self.controller = LMPC(exp_cfg)
+		else:
+			raise Exception("Unsupported controller.")
 
 	def reset(self):
 		self.all_samples = []
@@ -139,17 +139,17 @@ class Experiment:
 			else:
 				 valid_starts = [self.controller.compute_valid_start_state() for _ in range(self.samples_per_iteration)]
 				 samples = get_samples_parallel(valid_starts, self.exp_cfg)
-				 # assert(False)
 
+			print("Average Cost: %f"%mean_cost)
+			print("Individual Costs:")
+			print([s['total_cost'] for s in samples])
 			self.all_samples.append(samples)
 			self.controller.train(samples)
 			self.controller.save_controller_state()
 
 			mean_cost = np.mean([s['total_cost'] for s in samples])
 			self.mean_costs.append(mean_cost)
-			print("Average Cost: %f"%mean_cost)
-			print("Individual Costs:")
-			print([s['total_cost'] for s in samples])
+
 
 			self.dump_logs()
 		self.plot_results(save_file=osp.join(self.save_dir, "costs.png"), show=False)
