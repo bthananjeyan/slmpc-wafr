@@ -140,15 +140,18 @@ class Experiment:
 				 valid_starts = [self.controller.compute_valid_start_state() for _ in range(self.samples_per_iteration)]
 				 samples = get_samples_parallel(valid_starts, self.exp_cfg)
 
+			mean_cost = np.mean([s['total_cost'] for s in samples])
+			self.mean_costs.append(mean_cost)
+
 			print("Average Cost: %f"%mean_cost)
 			print("Individual Costs:")
 			print([s['total_cost'] for s in samples])
+			
 			self.all_samples.append(samples)
 			self.controller.train(samples)
 			self.controller.save_controller_state()
 
-			mean_cost = np.mean([s['total_cost'] for s in samples])
-			self.mean_costs.append(mean_cost)
+			
 
 
 			self.dump_logs()
