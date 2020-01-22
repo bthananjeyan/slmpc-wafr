@@ -31,11 +31,10 @@ class ValueFunc:
 		self.value_data = value_data # nsamples X horizon
 		self.approx_mode = approx_mode
 		self.model_fit = load_model
-		print("GOT HERE")
 		if approx_mode == "linear":
 			self.model = Ridge(alpha=0) 
 		elif approx_mode == "knn":
-			self.model = knn(n_neighbors=5) # TODO: think about n_neighbors
+			self.model = knn(n_neighbors=5)
 		elif approx_mode == "pe":
 			self.graph = tf.Graph()
 			with self.graph.as_default():
@@ -44,8 +43,6 @@ class ValueFunc:
 				self.model = value_pe_constructor(self.sess, load_model, model_dir)
 		else:
 			raise("Unsupported value approximation mode")
-
-		print("GOT HERE NOW")
 
 	def get_samples(self, t=None):
 		if idx is None:
@@ -74,7 +71,7 @@ class ValueFunc:
 		elif self.approx_mode == "knn":
 			self.model.fit(self.state_fit_data)
 		elif self.approx_mode == "pe":
-			self.model.train(self.state_fit_data, self.value_fit_data[...,np.newaxis], epochs=100)
+			self.model.train(self.state_fit_data, self.value_fit_data[...,np.newaxis], epochs=100) # TODO: change to 100 back
 		else:
 			raise("Unsupported value approximation mode")
 

@@ -47,7 +47,12 @@ class LMPC(Controller):
 		self.soln_mode = cfg.soln_mode
 		self.ss_approx_mode = cfg.ss_approx_mode
 		self.variable_start_state = cfg.variable_start_state
+		self.variable_start_state_cost = cfg.variable_start_state_cost
 		self.model_logdir = cfg.model_logdir
+		self.n_samples_start_state_opt = cfg.n_samples_start_state_opt
+		self.start_state_opt_success_thresh = cfg.start_state_opt_success_thresh
+		self.ss_value_train_success_thresh = cfg.ss_value_train_success_thresh
+		self.update_SS_and_value_func_CEM = cfg.update_SS_and_value_func_CEM
 
 		if not os.path.exists(self.model_logdir):
 			os.makedirs(self.model_logdir)
@@ -57,7 +62,7 @@ class LMPC(Controller):
 		elif self.ss_approx_mode == "convex_hull":
 			pass
 		else:
-			raise("Unsupported SS Approx Mode")
+			raise Exception("Unsupported SS Approx Mode")
 
 		self.value_approx_mode = cfg.value_approx_mode
 
@@ -118,7 +123,7 @@ class LMPC(Controller):
 			value_ss_approx_model.fit(list(itertools.chain.from_iterable(self.SS[-1].state_data)))
 			self.value_ss_approx_models.append(value_ss_approx_model)	
 		else:
-			raise("Unsupported SS Approx Mode")
+			raise Exception("Unsupported SS Approx Mode")
 
 		# Update safety model
 		all_safe_states = list(itertools.chain.from_iterable([s.state_data for s in self.SS]))
@@ -129,40 +134,66 @@ class LMPC(Controller):
 		elif self.ss_approx_mode == "convex_hull":
 			self.ss_approx_model = Delaunay(self.all_safe_states)
 		else:
-			raise("Unsupported SS Approx Mode")
+			raise Exception("Unsupported SS Approx Mode")
 
 		# Fit value function
 		self.value_funcs[-1].fit()
 
-	def compute_valid_start_state(self):
+	def compute_valid_start_state(self, desired_start=None):
+		# Sample some start state in safe set, compute self.n_samples_start_state_opt. samples for it
+		# and resample if less than self.start_state_opt_success_thresh % are successful
 		valid_start = None
+
+		if self.variable_start_state and self.variable_start_state_cost == "towards":
+			# TODO: make this less hacky by just taking normal euclidean distance, including velocities...
+			sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm( np.array([x[0], x[2]]) - np.array([desired_start[0], desired_start[2]]) ) )
+			# sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm(x - desired_start) )
+
 		# Find a valid start state
 		if self.variable_start_state:
+			i = 0
 			valid = False
 			while not valid:
-				sampled_start = self.all_safe_states[np.random.randint(len(self.all_safe_states))]
-				traj, valid = self.traj_opt(sampled_start)
-				valid_start = traj[-self.optimizer_params["plan_hor"]]
+				if self.variable_start_state_cost != "towards":
+					sampled_start = self.all_safe_states[np.random.randint(len(self.all_safe_states))]
+				else:
+					sampled_start = sorted_all_safe_states[i]
+
+				print("SAMPLED START", sampled_start)
+				 # TODO: parallelize later if needed
+				valid_starts = []
+				valid_trajs = []
+				for _ in range(self.n_samples_start_state_opt):
+					traj, traj_valid = self.traj_opt(sampled_start, desired_start)
+					if traj_valid:
+						valid_starts.append(traj[-self.optimizer_params["plan_hor"]])
+						valid_trajs.append(traj)
+
+				print("NUM VALIDS", len(valid_starts))
+				if len(valid_starts) >= int(self.start_state_opt_success_thresh * self.n_samples_start_state_opt):
+					valid = True 
+					valid_start = valid_starts[np.random.randint(len(valid_starts))]
+
+				i += 1
+
+			print("VALID START", valid_start)
 
 		return valid_start
 
-	def traj_opt(self, obs):
+	def traj_opt(self, obs, desired_start=None):
 		if self.soln_mode == "cem":
 			mean = np.tile((self.ac_lb + self.ac_ub) / 2, [self.optimizer_params["plan_hor"]+self.optimizer_params["extra_hor"]])
 			var = np.tile(np.square(self.ac_ub - self.ac_lb) / 16, [self.optimizer_params["plan_hor"]+self.optimizer_params["extra_hor"]])
-			soln, pred_traj = self.run_cem(obs, mean, var, traj_opt_mode=True)
+			soln, pred_traj = self.run_cem(obs, mean, var, traj_opt_mode=True, desired_start=desired_start)
 			invalid = int(self.unsafe(pred_traj[-1:], self.ss_approx_model)[0, 0]) # Check whether terminal state is actually safe
 		elif self.soln_mode == "exact":
 			raise Exception("Not Implemented")
 		else:
 			raise Exception("Unsupported solution method")
 
-		if invalid:
-			return pred_traj, False
-		else:
-			return pred_traj, True 
+		return pred_traj, 1 - invalid
 
-	def run_cem(self, obs, mean, var, traj_opt_mode=False):
+	def run_cem(self, obs, mean, var, traj_opt_mode=False, desired_start=None):
 		if traj_opt_mode:
 			plan_hor = self.optimizer_params["plan_hor"] + self.optimizer_params["extra_hor"]
 		else:
@@ -176,9 +207,10 @@ class LMPC(Controller):
 			constrained_var = np.minimum(np.minimum(np.square(lb_dist / 2), np.square(ub_dist / 2)), var)
 			samples = X.rvs(size=[self.optimizer_params["popsize"], plan_hor*self.dU]) * np.sqrt(constrained_var) + mean
 			if traj_opt_mode:
-				costs, rollouts = self._predict_and_eval_expansion(obs, samples)
+				costs, rollouts = self._predict_and_eval_expansion(obs, samples, desired_start=desired_start)
 			else:
 				costs, rollouts = self._predict_and_eval(obs, samples)
+
 			costs = costs.reshape(self.optimizer_params["npart"], self.optimizer_params["popsize"]).T.mean(1)
 			print(" CEM Iteration ", i, "Cost: ", np.mean(costs))
 			elites = samples[np.argsort(costs)][:self.optimizer_params["num_elites"]]
@@ -204,10 +236,14 @@ class LMPC(Controller):
 			dists[safe_idxs] = 0
 			return dists
 		else:
-			raise("Unsupported SS Approx Mode")
+			raise Exception("Unsupported SS Approx Mode")
 
-	# TODO: fit a safe set approx model to every safe set so far and blow
-	# up value for any state that is not in them @ each iteration
+	def compute_nn(self, states, approx_model):
+		dists = approx_model.kneighbors(states)
+		nearest_neighbors = [self.all_safe_states[i[0]] for i in dists[1]]
+		return np.array(nearest_neighbors)
+		# assert(False)
+
 	def compute_value(self, states):
 		# Now evaluate queried states on each value_ss_approx_model and blow
 		# up values accordingly if needed
@@ -241,16 +277,42 @@ class LMPC(Controller):
 			finish = time.perf_counter()
 			# print("Time Taken Parallelized: " + str(round(finish-start, 2)))
 
+		# Compute safe trajectories, if enough are safe in this CEM Iter, then
+		# save states and VALUE adjusted costs for THOSE trajectories so that
+		# they can be added to safe set and value buffer
+
 		safety_check = self.unsafe(pred_trajs[:, -1], self.ss_approx_model)
 		traj_value = self.compute_value(pred_trajs[:, -1])
+
+		costs_cumsum = np.apply_along_axis(lambda x: np.cumsum(np.array(x)[::-1])[::-1], 1, costs)
+		reshaped_value = traj_value.reshape((-1, 1))
+		value_targets = costs_cumsum + reshaped_value 
+
 		costs = np.sum(costs, axis=1)
 		safety_check = safety_check.flatten()
 		costs += traj_value
 		costs += safety_check * 1e6
 
+		if self.update_SS_and_value_func_CEM:
+			# Update data for safe set and value func
+			success_percentage =  (len(safety_check) - np.sum(safety_check))/len(safety_check) 
+			if success_percentage > self.ss_value_train_success_thresh:
+				# Get successful idxs
+				success_idxs = (1 - np.array(safety_check)).astype(bool)
+				value_targets_filtered = value_targets[success_idxs]
+				pred_trajs_filtered = pred_trajs[success_idxs]
+				pred_trajs_filtered = pred_trajs_filtered[:,:-1,:]
+
+				state_train_data = pred_trajs_filtered.reshape((-1, pred_trajs_filtered.shape[-1]))
+				value_train_data = value_targets_filtered.flatten()
+				s = {"states": state_train_data, "values": value_train_data}
+				# Add samples to most recent safe set and value_func train set
+				self.SS[-1].add_sample(s)
+				self.value_funcs[-1].add_sample(s)
+
 		return costs, pred_trajs
 
-	def _predict_and_eval_expansion(self, obs, ac_seqs, get_pred_trajs=True):
+	def _predict_and_eval_expansion(self, obs, ac_seqs, get_pred_trajs=True, desired_start=None):
 		"""
 		Takes in Numpy arrays obs (current image) and action sequences to evaluate. Returns the predicted
 		frames and the costs associated with each action sequence.
@@ -260,14 +322,7 @@ class LMPC(Controller):
 		# Keep setting state to obs and simulating actions: # TODO: parallelize
 		if not self.parallelize_cem:
 			start = time.perf_counter()	
-			pred_trajs = np.zeros((self.optimizer_params["popsize"], self.optimizer_params["plan_hor"]+self.optimizer_params["extra_hor"]+1, len(obs)))
-			for i in range(self.optimizer_params["popsize"]):
-				self.cem_env.reset()
-				self.cem_env.set_state(obs)
-				for j in range(self.optimizer_params["plan_hor"]+self.optimizer_params["extra_hor"]):
-					self.cem_env.step(ac_seqs[i, j])
-
-				pred_trajs[i] = np.array(self.cem_env.get_hist())
+			pred_trajs, costs = self.cem_env.vectorized_step(obs, ac_seqs)
 			finish = time.perf_counter()
 			# print("Time Taken Serially: " + str(round(finish-start, 2)))
 		else:
@@ -278,16 +333,54 @@ class LMPC(Controller):
 			finish = time.perf_counter()
 			# print("Time Taken Parallelized: " + str(round(finish-start, 2)))
 
-		costs = 1 - self.unsafe(pred_trajs[:, 0], self.ss_approx_model) # 0 cost if unsafe
-		for i in range(1, pred_trajs.shape[1]-1):
-			costs += (1 - self.unsafe(pred_trajs[:, i], self.ss_approx_model) )
+		if self.variable_start_state_cost == "indicator":
+			start_state_opt_costs = 1 - self.unsafe(pred_trajs[:, 0], self.ss_approx_model) # 0 cost if unsafe
+			for i in range(1, pred_trajs.shape[1]-1):
+				start_state_opt_costs += (1 - self.unsafe(pred_trajs[:, i], self.ss_approx_model) )
+		elif self.variable_start_state_cost == "nearest_neighbor":
+			# Expand away from nearest neighbor
+			# Find nearest neighbors of all points in safe set and encourage being far away
+			# Don't include first point since it has to be in the safeset
+			start_state_opt_costs = np.zeros(len(pred_trajs[:, 0]))
+			for i in range(1, pred_trajs.shape[1]-1):
+				nn = self.compute_nn(pred_trajs[:, i], self.ss_approx_model)
+				start_state_opt_costs += -np.sum((pred_trajs[:, i] - self.compute_nn(pred_trajs[:, i], self.ss_approx_model))**2, axis=1)
+		elif self.variable_start_state_cost == "towards":
+			# Expand toward desired_start
+			start_state_opt_costs = np.zeros(len(pred_trajs[:, 0]))
+			for i in range(1, pred_trajs.shape[1]-1):
+				start_state_opt_costs += np.sum((pred_trajs[:, i] - desired_start)**2, axis=1)
+		else:
+			raise Exception("Unsupported Start State Selection Cost Function")
 
-		costs = costs.flatten()
+		traj_value = self.compute_value(pred_trajs[:, -1])
+		costs_cumsum = np.apply_along_axis(lambda x: np.cumsum(np.array(x)[::-1])[::-1], 1, costs)
+		reshaped_value = traj_value.reshape((-1, 1))
+		value_targets = costs_cumsum + reshaped_value 
+
+		start_state_opt_costs = start_state_opt_costs.flatten()
 		safety_check = self.unsafe(pred_trajs[:, -1], self.ss_approx_model)
 		safety_check = safety_check.flatten()
-		costs += safety_check * 1e6
+		start_state_opt_costs += safety_check * 1e6
 
-		return costs, pred_trajs
+		# Update data for safe set and value func
+		if self.update_SS_and_value_func_CEM:
+			success_percentage =  (len(safety_check) - np.sum(safety_check))/len(safety_check) 
+			if success_percentage > self.ss_value_train_success_thresh:
+				# Get successful idxs
+				success_idxs = (1 - np.array(safety_check)).astype(bool)
+				value_targets_filtered = value_targets[success_idxs]
+				pred_trajs_filtered = pred_trajs[success_idxs]
+				pred_trajs_filtered = pred_trajs_filtered[:,:-1,:]
+
+				state_train_data = pred_trajs_filtered.reshape((-1, pred_trajs_filtered.shape[-1]))
+				value_train_data = value_targets_filtered.flatten()
+				s = {"states": state_train_data, "values": value_train_data}
+				# Add samples to most recent safe set and value_func train set
+				self.SS[-1].add_sample(s)
+				self.value_funcs[-1].add_sample(s)
+
+		return start_state_opt_costs, pred_trajs
 
 	def save_controller_state(self):
 		pickle.dump(self.ss_approx_model, open(os.path.join(self.model_logdir, "ss_approx_model.pkl"), "wb"))
@@ -321,7 +414,7 @@ class LMPC(Controller):
 		self.all_safe_states = pickle.load( open(os.path.join(self.model_logdir, "all_safe_states.pkl"), "rb") )
 
 		safe_set_data = pickle.load(open(os.path.join(self.model_logdir, "ss_data.pkl"), "rb"))
-		self.SS = [SafeSet(state_data=state_data, cost_data=cost_data) for (state_data, cost_data) in safe_set_data]
+		self.SS = [SafeSet(state_data=state_data) for state_data in safe_set_data]
 
 		value_models_base_dir = os.path.join(self.model_logdir, "value")
 		self.value_funcs = []
@@ -332,15 +425,9 @@ class LMPC(Controller):
 		g = tf.Graph()
 		with g.as_default():
 			for i, value_folder in enumerate(value_folder_list):
-				print("huge")
-				print(value_folder)
 				state_data = value_func_data[i][0]
 				value_data = value_func_data[i][1]
 				self.value_funcs.append(ValueFunc(self.value_approx_mode, load_model=True, model_dir=os.path.join(value_models_base_dir, value_folder), state_data=state_data, value_data=value_data))
-				print("industries")
-
-		print("GOT HERE")
 
 		self.value_ss_approx_models = pickle.load( open(os.path.join(self.model_logdir, "value_ss", "value_ss_approx_models.pkl"), "rb") )
-		print("DONE RESTORING")
 

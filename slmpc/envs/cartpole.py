@@ -105,6 +105,18 @@ class CartPole(Env, utils.EzPickle):
             print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
         return self.state, cur_cost, self.done, {}
 
+    def vectorized_step(self, s, a):
+        state = np.tile(s, (len(a), 1)).T
+        trajectories = [state]
+        for t in range(a.shape[1]):
+            next_state = self._next_state(state, a[:,t].T)
+            trajectories.append(next_state)
+            state = next_state
+        costs = []
+        for t in range(a.shape[1]):
+            costs.append(self.step_cost(trajectories[t].T, a[:,t]))
+        return np.stack(trajectories, axis=1).T, np.array(costs).T
+
     def reset(self):
         self.state = self.start_state # TODO: update this to allow varied start states...
         self.time = 0

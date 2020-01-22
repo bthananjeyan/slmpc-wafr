@@ -10,13 +10,14 @@ from slmpc.controllers import LMPC, RandomController
 def pointbot_config(exp_cfg):
 	exp_cfg.save_dir = "logs/pointbot"
 	exp_cfg.demo_path = "demos/pointbot/demos_1.p"
-	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
-	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
-	exp_cfg.variable_start_state = False
+	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull' since this is a linear system
+	exp_cfg.value_approx_mode = "pe"
+	exp_cfg.variable_start_state = True
+	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 3
 	exp_cfg.parallelize_cem = False
-	exp_cfg.parallelize_rollouts = True
+	exp_cfg.parallelize_rollouts = False
 	exp_cfg.model_logdir = 'model_logs'
 	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for pointbot?
 	return PointBot()
@@ -30,7 +31,7 @@ def cartpole_config(exp_cfg):
 	exp_cfg.demo_path = "demos/cartpole/demos.p"
 	exp_cfg.ss_approx_mode = "knn"
 	exp_cfg.variable_start_state = False
-	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
+	exp_cfg.value_approx_mode = "pe"
 	exp_cfg.model_logdir = 'model_logs'
 	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for cartpole
 	return CartPole()
@@ -39,8 +40,13 @@ def config(env_name, controller_type):
 	exp_cfg = DotMap()
 	exp_cfg.samples_per_iteration = 2
 	exp_cfg.num_iterations = 10
+	exp_cfg.n_samples_start_state_opt = 5
+	exp_cfg.start_state_opt_success_thresh = 0.6
+	exp_cfg.ss_value_train_success_thresh = 0.6
 	exp_cfg.controller_type = controller_type
 	exp_cfg.log_all_data = False
+	exp_cfg.desired_starts = [[-75, 0, 0, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
+	exp_cfg.update_SS_and_value_func_CEM = True
 
 	if env_name == "pointbot":
 		env = pointbot_config(exp_cfg)
