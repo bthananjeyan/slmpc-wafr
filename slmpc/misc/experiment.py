@@ -142,8 +142,6 @@ class Experiment:
 				 # assert(False)
 
 			self.all_samples.append(samples)
-			self.controller.train(samples)
-			self.controller.save_controller_state()
 
 			mean_cost = np.mean([s['total_cost'] for s in samples])
 			self.mean_costs.append(mean_cost)
@@ -151,6 +149,8 @@ class Experiment:
 			print("Individual Costs:")
 			print([s['total_cost'] for s in samples])
 
+			self.controller.train(samples)
+			self.controller.save_controller_state()
 			self.dump_logs()
 		self.plot_results(save_file=osp.join(self.save_dir, "costs.png"), show=False)
 
