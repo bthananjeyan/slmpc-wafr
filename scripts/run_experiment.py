@@ -28,7 +28,7 @@ def pointbot_config(exp_cfg):
 	exp_cfg.start_state_opt_success_thresh = 0.6
 	exp_cfg.ss_value_train_success_thresh = 0.7
 	exp_cfg.desired_starts = [[-100, 0, 10, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
-	exp_cfg.update_SS_and_value_func_CEM = True
+	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
 	return PointBot()
 
