@@ -160,7 +160,7 @@ class CartPole(Env, utils.EzPickle):
         trajectories = [state]
         for t in range(a.shape[1]):
             next_state = runge_kutta_vec(y_dot_first_vec(a[:,t].ravel()), state, np.ones(len(a)) * self.dt)
-            # next_state = self._next_state(state, a[:,t].T)
+            next_state += NOISE_SCALE * truncnorm.rvs(-1, 1, size=next_state.shape)
             trajectories.append(next_state)
             state = next_state
         costs = []
