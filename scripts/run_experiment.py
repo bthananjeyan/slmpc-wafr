@@ -79,7 +79,7 @@ def config(env_name, controller_type, exp_id):
 	exp_cfg.n_samples_start_state_opt = 5
 	exp_cfg.start_state_opt_success_thresh = 0.6
 	exp_cfg.ss_value_train_success_thresh = 0.6
-	exp_cfg.desired_starts = [[-75, 0, 0, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
+	exp_cfg.desired_starts = [[-50, 0, 0, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
 	exp_cfg.update_SS_and_value_func_CEM = False
 
 	return exp_cfg, env
