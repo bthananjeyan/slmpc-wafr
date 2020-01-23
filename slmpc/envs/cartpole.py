@@ -35,7 +35,55 @@ def y_dot_action(t, y, u):
 
     return [ y[1], x_ddot + damping_x, y[3], theta_ddot + damping_theta ]
 
+def y_dot_action_vec(t, y, u):
+    g = 9.8 # Gravitational Acceleration
+    L = 1.5 # Length of pendulum
+    m = 1.0 # mass of bob (kg)
+    M = 5.0 # mass of cart (kg)
+    d1 = 1.0
+    d2 = 0.5
+
+    x_ddot = u - m * L * np.multiply(np.multiply(y[:,3], y[:,3]), np.cos(y[:,2])) + m * g * np.multiply(np.cos(y[:,2]), np.sin(y[:,2]))
+    x_ddot = np.divide(x_ddot, ( M + m - m * np.multiply(np.sin(y[:,2]), np.sin(y[:,2]))))
+    theta_ddot = -g / L * np.cos(y[:,2]) -  np.multiply(np.sin(y[:,2]), x_ddot)/L
+    damping_x =  - d1*y[:,1]
+    damping_theta =  - d2*y[:,3]
+
+    return np.stack([y[:,1], x_ddot + damping_x, y[:,3], theta_ddot + damping_theta]).T
+
+def runge_kutta_vec(f, y0, tf, steps=100):
+    h = tf/steps
+    yn = y0
+    tn = 0
+    for i in range(int(steps)):
+        k1 = h[...,np.newaxis] * np.array(f(tn, yn))
+        k2 = h[...,np.newaxis] * np.array(f(tn + h/2, yn + k1/2))
+        k3 = h[...,np.newaxis] * np.array(f(tn + h/2, yn + k2/2))
+        k4 = h[...,np.newaxis] * np.array(f(tn + h, yn + k3))
+
+        yn = yn + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+        tn = tn + h
+    return yn
+
+
 y_dot_first = lambda u: (lambda t, y: y_dot_action(t, y, u))
+y_dot_first_vec = lambda u: (lambda t, y: y_dot_action_vec(t, y, u))
+
+def test_integrator():
+    y0 = np.array([[0, 0, np.pi, 0],[1, 2, np.pi/3, np.pi/8]])
+    acs = np.array([1, 2])
+    fn = y_dot_first_vec(acs)
+    t0 = np.array([0, 0])
+    tf = np.array([1, 1])
+    oput = runge_kutta_vec(fn, y0, tf)
+    print(oput)
+
+    fn = y_dot_first(acs[0])
+    sol = solve_ivp(fn, [t0[0], tf[0]], y0[0], t_eval=[tf[0]], rtol=1e-6).y
+    print(sol)
+    fn = y_dot_first(acs[1])
+    sol = solve_ivp(fn, [t0[1], tf[1]], y0[1], t_eval=[tf[1]], rtol=1e-6).y
+    print(sol)
 
 class MyLinearizedSystem:
     def __init__(self):
@@ -84,6 +132,7 @@ class CartPole(Env, utils.EzPickle):
         self.action_space = Box(-np.ones(1) * MAX_FORCE, np.ones(1) * MAX_FORCE) # TODO: set this
         self.observation_space = Box(-np.ones(4) * np.float('inf'), np.ones(4) * np.float('inf'))
         self.start_state = START_STATE
+        self.goal_state = GOAL_STATE
         self.dt = DT
         self.t = 0
         self.name = "cartpole"
@@ -106,19 +155,21 @@ class CartPole(Env, utils.EzPickle):
         return self.state, cur_cost, self.done, {}
 
     def vectorized_step(self, s, a):
-        state = np.tile(s, (len(a), 1)).T
+        # fixed start state, execute many sequences of controls in parallel
+        state = np.tile(s, (len(a), 1))
         trajectories = [state]
         for t in range(a.shape[1]):
-            next_state = self._next_state(state, a[:,t].T)
+            next_state = runge_kutta_vec(y_dot_first_vec(a[:,t].ravel()), state, np.ones(len(a)) * self.dt)
+            # next_state = self._next_state(state, a[:,t].T)
             trajectories.append(next_state)
             state = next_state
         costs = []
         for t in range(a.shape[1]):
-            costs.append(self.step_cost(trajectories[t].T, a[:,t]))
-        return np.stack(trajectories, axis=1).T, np.array(costs).T
+            costs.append(self.step_cost(trajectories[t], a[:,t]))
+        return np.stack(trajectories, axis=1), np.array(costs).T
 
     def reset(self):
-        self.state = self.start_state # TODO: update this to allow varied start states...
+        self.state = np.array(self.start_state) # TODO: update this to allow varied start states...
         self.time = 0
         self.cost = []
         self.done = False
@@ -134,11 +185,21 @@ class CartPole(Env, utils.EzPickle):
     def get_costs(self):
         return self.cost
 
+    def set_goal(self, goal_state):
+        self.goal_state = goal_state
+
+    @property
+    def goal_fn(self):
+        return lambda x: (np.abs(s[:,2] - self.goal_state[2]) > GOAL_THRESH).astype(float)
+
     # TODO: make this not dense cost at some point
     def step_cost(self, s, a):
         if HARD_MODE:
-            return float(np.abs(s[2] - GOAL_STATE[2]) > GOAL_THRESH)
-        return np.abs(s[2] - GOAL_STATE[2])
+            if len(s.shape) == 2:
+                return (np.abs(s[:,2] - self.goal_state[2]) > GOAL_THRESH).astype(float)
+            else:
+                return float(np.abs(s[2] - self.goal_state[2]) > GOAL_THRESH)
+        return np.abs(s[2] - self.goal_state[2])
 
     def values(self):
         return np.cumsum(np.array(self.cost)[::-1])[::-1]
@@ -148,13 +209,13 @@ class CartPole(Env, utils.EzPickle):
 
     # Returns whether a state is stable or not
     def is_stable(self, s):
-        return np.abs(s[2] - GOAL_STATE[2]) <= GOAL_THRESH
+        return np.abs(s[2] - self.goal_state[2]) <= GOAL_THRESH
 
     # This will be our LQR Controller.
     # LQRs are more theoritically grounded, they are a class of optimal control algorithms.
     # The control law is u = KY. K is the unknown which is computed as a solution to minimization problem.
     def lqr_u(self, y):
-        u_ = -np.matmul(self.ss.K , y - np.array(GOAL_STATE) ) # This was important
+        u_ = -np.matmul(self.ss.K , y - np.array(self.goal_state) ) # This was important
         return np.asarray(u_[0])[0]
 
     def teacher(self, sess=None):
@@ -208,6 +269,7 @@ class CartPoleTeacher(object):
 
 # Both cart and the pendulum can move.
 if __name__=="__main__":
+
     syst = InvertedPendulum()
     env = CartPole()
     obs = env.reset()

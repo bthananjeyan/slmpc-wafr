@@ -16,7 +16,7 @@ def pointbot_config(exp_cfg):
 	exp_cfg.demo_path = "demos/pointbot/demos_1.p"
 	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
 	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
-	exp_cfg.variable_start_state = True
+	exp_cfg.variable_start_state = False
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 3
@@ -35,8 +35,8 @@ def pointbot_config(exp_cfg):
 def cartpole_config(exp_cfg):
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 5
-	exp_cfg.parallelize_cem = True
-	exp_cfg.parallelize_rollouts = False
+	exp_cfg.parallelize_cem = False
+	exp_cfg.parallelize_rollouts = True
 	exp_cfg.save_dir = "logs/cartpole"
 	exp_cfg.demo_path = "demos/cartpole/demos.p"
 	exp_cfg.ss_approx_mode = "knn"
@@ -66,6 +66,12 @@ def pointbot_exp2_config(exp_cfg):
 	from slmpc.envs.pointbot_const import GOAL_STATE
 	exp_cfg.goal_schedule = SingleSwitchSchedule(2, [GOAL_STATE, GOAL_STATE])
 
+def cartpole_exp1_config(exp_cfg):
+	exp_cfg.samples_per_iteration = 5
+	exp_cfg.num_iterations = 15
+	from slmpc.envs.cartpole_const import GOAL_STATE
+	exp_cfg.goal_schedule = NoSwitchSchedule(None, GOAL_STATE)
+
 
 def config(env_name, controller_type, exp_id):
 	exp_cfg = DotMap()
@@ -73,6 +79,15 @@ def config(env_name, controller_type, exp_id):
 	exp_cfg.log_all_data = False
 
 
+	# experiment specific overrides
+	if exp_id == 'p1':
+		pointbot_exp1_config(exp_cfg)
+	elif exp_id == 'p2':
+		pointbot_exp2_config(exp_cfg)
+	elif exp_id == 'c1':
+		cartpole_exp1_config(exp_cfg)
+	else:
+		raise Exception("Unknown Experiment ID.")
 
 	if env_name == "pointbot":
 		env = pointbot_config(exp_cfg)
@@ -80,16 +95,6 @@ def config(env_name, controller_type, exp_id):
 		env = cartpole_config(exp_cfg)
 	else:
 		raise Exception("Unsupported environment.")
-
-
-	# experiment specific overrides
-	if exp_id == 'p1':
-		pointbot_exp1_config(exp_cfg)
-	elif exp_id == 'p2':
-		pointbot_exp2_config(exp_cfg)
-	else:
-		raise Exception("Unknown Experiment ID.")
-
 
 	exp_cfg.env_name = env.env_name
 	exp_cfg.ac_lb = env.action_space.low
@@ -106,7 +111,7 @@ if __name__ == '__main__':
 	parser.add_argument('-ctrl', type=str, default="random",
 						help='Controller name: select from [random, lmpc_expect]')
 	parser.add_argument('-exp_id', type=str, default="p1",
-						help='Experiment ID: select from [p1, p2]')
+						help='Experiment ID: select from [p1, p2, c1]')
 	args = parser.parse_args()
 
 	exp_cfg, env = config(args.env_name, args.ctrl, args.exp_id)

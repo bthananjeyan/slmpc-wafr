@@ -68,6 +68,7 @@ class PointBot(Env, utils.EzPickle):
         return self.state, cur_cost, self.done, {}
 
     def vectorized_step(self, s, a):
+        # fixed start state, execute many sequences of controls in parallel
         state = np.tile(s, (len(a), 1)).T
         trajectories = [state]
         for t in range(a.shape[1]):
@@ -106,7 +107,6 @@ class PointBot(Env, utils.EzPickle):
     def _next_state(self, s, a):
         return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * truncnorm.rvs(-1, 1, size=s.shape)
 
-    # TODO: make this not dense cost at some point
     def step_cost(self, s, a):
         if HARD_MODE:
             if len(s.shape) == 2:
