@@ -42,11 +42,7 @@ def cartpole_config(exp_cfg):
 
 
 def pointbot_exp1_config(exp_cfg):
-<<<<<<< HEAD
 	exp_cfg.samples_per_iteration = 1
-=======
-	exp_cfg.samples_per_iteration = 100
->>>>>>> 1f49c549fd23a2b42da471900fab75d8224f6c25
 	exp_cfg.num_iterations = 5
 	from slmpc.envs.pointbot_const import GOAL_STATE
 	exp_cfg.goal_schedule = NoSwitchSchedule(None, GOAL_STATE)
