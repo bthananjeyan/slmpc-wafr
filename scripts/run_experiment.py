@@ -26,9 +26,9 @@ def pointbot_config(exp_cfg):
 	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for pointbot?
 	exp_cfg.n_samples_start_state_opt = 5
 	exp_cfg.start_state_opt_success_thresh = 0.6
-	exp_cfg.ss_value_train_success_thresh = 0.9
+	exp_cfg.ss_value_train_success_thresh = 0.7
 	exp_cfg.desired_starts = [[-100, 0, 10, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
-	exp_cfg.update_SS_and_value_func_CEM = False
+	exp_cfg.update_SS_and_value_func_CEM = True
 	exp_cfg.max_update_SS_value = 50
 	return PointBot()
 
@@ -72,6 +72,13 @@ def config(env_name, controller_type, exp_id):
 	exp_cfg.controller_type = controller_type
 	exp_cfg.log_all_data = True
 
+	# experiment specific overrides
+	if exp_id == 'p1':
+		pointbot_exp1_config(exp_cfg)
+	elif exp_id == 'p2':
+		pointbot_exp2_config(exp_cfg)
+	else:
+		raise Exception("Unknown Experiment ID.")
 
 
 	if env_name == "pointbot":
@@ -80,15 +87,6 @@ def config(env_name, controller_type, exp_id):
 		env = cartpole_config(exp_cfg)
 	else:
 		raise Exception("Unsupported environment.")
-
-
-	# experiment specific overrides
-	if exp_id == 'p1':
-		pointbot_exp1_config(exp_cfg)
-	elif exp_id == 'p2':
-		pointbot_exp2_config(exp_cfg)
-	else:
-		raise Exception("Unknown Experiment ID.")
 
 
 	exp_cfg.env_name = env.env_name
