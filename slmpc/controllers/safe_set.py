@@ -14,8 +14,8 @@ def create_ss_new_goal(ss_old, goal_fn):
 
 
 class SafeSet:
-	def __init__(self, state_data=[]):
-		self.state_data = state_data # nsamples X horizon X state_dim
+	def __init__(self, state_data=()):
+		self.state_data = list(state_data) # nsamples X horizon X state_dim
 
 	def get_samples(self, t=None):
 		if idx is None:

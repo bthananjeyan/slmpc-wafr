@@ -106,6 +106,7 @@ class Experiment:
 		while not done:
 			action = self.controller.act(obs)
 			obs, cost, done, _ = self.env.step(action)
+			print(len(data['states']), obs, action, cost)
 			data['states'].append(obs)
 			data['actions'].append(action)
 			data['costs'].append(cost)

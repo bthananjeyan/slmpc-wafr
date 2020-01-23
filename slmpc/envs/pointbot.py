@@ -158,17 +158,6 @@ class PointBotTeacher(object):
                     action = [0.1, 0.1]
                 else:
                     action = self._expert_control(obs, i)
-            else:
-                noise_idx = np.random.randint(int(HORIZON))
-                if i < HORIZON / 4:
-                    action = [0.1, 0.25]
-                elif i < HORIZON / 2:
-                    action = [0.4, 0.]
-                elif i < HORIZON / 3 * 2:
-                    action = [0, -0.5]
-                else:
-                    action = self._expert_control(obs, i)
-
             if i < noise_idx:
                 action = (np.array(action) +  np.random.normal(0, noise_std, self.env.action_space.shape[0])).tolist()
 
@@ -186,6 +175,8 @@ class PointBotTeacher(object):
         else:
             stabilizable_obs = []
             return self.get_rollout()
+
+        print(costs)
 
         return {
             "obs": O,
@@ -210,5 +201,5 @@ if __name__=="__main__":
     env = PointBot()
     obs = env.reset()
     teacher = env.teacher()
-    teacher.save_demos(20)
+    teacher.save_demos(100)
     print("DONE DEMOS")

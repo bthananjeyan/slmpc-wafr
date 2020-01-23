@@ -1,9 +1,12 @@
 import itertools
+import os.path as osp
 
 from dotmap import DotMap
 import numpy as np
 from sklearn.neighbors import NearestNeighbors as knn
 from sklearn.linear_model import Ridge
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.neural_network import MLPRegressor
 import tensorflow as tf
 
 from slmpc.controllers.utils import process_sample_for_goal
@@ -26,6 +29,7 @@ def value_pe_constructor(sess, load_model, model_dir):
 	return model
 
 def create_value_function_new_goal(v_old, goal_fn):
+	assert 0
 	data = v_old.get_data()
 	state_data, value_data, cost_data = [], [], []
 	for i in range(len(data[0])):
@@ -41,14 +45,18 @@ def create_value_function_new_goal(v_old, goal_fn):
 
 # TODO: add goal conditioned filter or something
 class ValueFunc:
-	def __init__(self, approx_mode, load_model=False, model_dir=None, state_data=[], value_data=[], cost_data=[]):
-		self.state_data = state_data # nsamples X horizon X state_dim
-		self.value_data = value_data # nsamples X horizon
-		self.cost_data = cost_data # nsamples X horizon
+	def __init__(self, approx_mode, load_model=False, model_dir=None, state_data=(), value_data=(), cost_data=()):
+		self.state_data = list(state_data) # nsamples X horizon X state_dim
+		self.value_data = list(value_data) # nsamples X horizon
+		self.cost_data = list(cost_data) # nsamples X horizon
 		self.approx_mode = approx_mode
 		self.model_fit = load_model
 		if approx_mode == "linear":
 			self.model = Ridge(alpha=0) 
+			self.model = KernelRidge(alpha=1, kernel='polynomial', coef0=4)
+			# self.model = MLPRegressor(hidden_layer_sizes = (100, 100), activation = 'relu', solver = 'sgd', learning_rate = 'adaptive')
+			if load_model:
+				self.model = pickle.load(open(osp.join(model_dir, "model.pkl"), "rb"))
 		elif approx_mode == "knn":
 			self.model = knn(n_neighbors=5)
 		elif approx_mode == "pe":
@@ -87,6 +95,8 @@ class ValueFunc:
 		self.state_fit_data = np.concatenate(state_fit_data, axis=0)
 
 		if self.approx_mode == "linear":
+			print(self.state_fit_data.shape, self.value_fit_data.shape)
+			# import IPython; IPython.embed()
 			self.model.fit(self.state_fit_data, self.value_fit_data)
 		elif self.approx_mode == "knn":
 			self.model.fit(self.state_fit_data)
@@ -109,7 +119,7 @@ class ValueFunc:
 		assert(self.model_fit)
 
 		if self.approx_mode == "linear":
-			return self.model.predict(states)
+			return 0.001 * self.model.predict(states)
 		elif self.approx_mode == "knn":
 			neighbors = self.model.kneighbors(states, return_distance=False)
 			neighbor_values = self.value_fit_data[neighbors]	
@@ -119,6 +129,17 @@ class ValueFunc:
 		else:
 			raise("Unsupported value approximation mode")
 
+	def visualize(self):
+		assert(self.model_fit)
+		states = []
+		for i in range(-50, 50):
+			for j in range(-50, 50):
+				states.append([i, 0, j, 0])
+		states = np.array(states)
+		values = self.value(states)
+		import matplotlib.pyplot as plt
+		plt.imshow(values.reshape((100, 100)))
+		plt.show()
 
 
 

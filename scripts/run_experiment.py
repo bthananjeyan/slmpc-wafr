@@ -15,7 +15,7 @@ def pointbot_config(exp_cfg):
 	exp_cfg.save_dir = "logs/pointbot"
 	exp_cfg.demo_path = "demos/pointbot/demos_1.p"
 	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
-	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
+	exp_cfg.value_approx_mode = "linear" # could be linear too, but I am pretty sure knn is better
 	exp_cfg.variable_start_state = False
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
@@ -42,7 +42,7 @@ def cartpole_config(exp_cfg):
 
 
 def pointbot_exp1_config(exp_cfg):
-	exp_cfg.samples_per_iteration = 5
+	exp_cfg.samples_per_iteration = 1
 	exp_cfg.num_iterations = 5
 	from slmpc.envs.pointbot_const import GOAL_STATE
 	exp_cfg.goal_schedule = NoSwitchSchedule(None, GOAL_STATE)
@@ -80,7 +80,7 @@ def config(env_name, controller_type, exp_id):
 	exp_cfg.start_state_opt_success_thresh = 0.6
 	exp_cfg.ss_value_train_success_thresh = 0.6
 	exp_cfg.desired_starts = [[-75, 0, 0, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
-	exp_cfg.update_SS_and_value_func_CEM = True
+	exp_cfg.update_SS_and_value_func_CEM = False
 
 	return exp_cfg, env
 

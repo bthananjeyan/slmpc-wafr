@@ -198,6 +198,7 @@ class LMPC(Controller):
 	def set_goal(self, goal_state):
 		if self.cem_env.goal_state == goal_state:
 			return
+		assert 0
 		self.cem_env.set_goal(goal_state)
 		goal_fn = self.cem_env.goal_fn
 		new_values = []
@@ -439,7 +440,11 @@ class LMPC(Controller):
 			desired_path = os.path.join(self.model_logdir, "value", "value_model_" + str(i))
 			if not os.path.exists(desired_path):
 				os.makedirs(desired_path)
-			value_model.save(desired_path)
+			if v.approx_mode == 'pe':
+				value_model.save(desired_path)
+			else:
+				pickle.dump(value_model, open(osp.join(desired_path, "model.pkl"), "wb"))
+
 		# Save data for self.value_funcs
 		pickle.dump([v.get_data() for v in self.value_funcs], open(os.path.join(self.model_logdir, "value_data.pkl"), "wb"))
 
@@ -451,6 +456,7 @@ class LMPC(Controller):
 
 	
 	def restore_controller_state(self, model_logdir=None):
+		assert 0
 		if model_logdir is not None:
 			self.model_logdir = model_logdir
 		# Reload safe set model and data
