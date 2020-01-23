@@ -150,13 +150,11 @@ class Experiment:
 					samples.append(self.sample(valid_start))
 			else:
 				valid_starts = [self.controller.compute_valid_start_state() for _ in range(self.samples_per_iteration)]
-				samples = get_samples_parallel(valid_starts, self.exp_cfg, self.goal_schedule(i))
-
 				if self.variable_start_state_cost == "towards":
 					valid_starts = [self.controller.compute_valid_start_state(self.desired_starts[i]) for _ in range(self.samples_per_iteration)]
 				else:
 					valid_starts = [self.controller.compute_valid_start_state() for _ in range(self.samples_per_iteration)]
-				samples = get_samples_parallel(valid_starts, self.exp_cfg)
+				samples = get_samples_parallel(valid_starts, self.exp_cfg, self.goal_schedule(i))
 
 			self.all_samples.append(samples)
 
