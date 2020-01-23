@@ -43,6 +43,7 @@ def get_sample(start_state, exp_cfg, goal_state=None):
 		data['costs'].append(cost)
 	data['total_cost'] = np.sum(data['costs'])
 	data['values'] = np.cumsum(data['costs'][::-1])[::-1]
+	data['successful'] = data['costs'][-1] == 0
 	return data
 
 
@@ -81,6 +82,7 @@ class Experiment:
 
 	def reset(self):
 		self.all_samples = []
+		self.all_valid_starts = []
 		self.mean_costs = []
 		self.cost_stds = []
 
@@ -88,7 +90,7 @@ class Experiment:
 		np.save(osp.join(self.save_dir, "mean_costs.npy"), self.mean_costs)
 		if self.log_all_data:
 			with open(osp.join(self.save_dir, "samples.pkl"), "wb") as f:
-				pickle.dump(self.all_samples, f)
+				pickle.dump({"samples": self.all_samples, "valid_starts": self.all_valid_starts}, f)
 
 	def sample(self, start_state):
 		data = {
@@ -112,6 +114,7 @@ class Experiment:
 			data['costs'].append(cost)
 		data['total_cost'] = np.sum(data['costs'])
 		data['values'] = np.cumsum(data['costs'][::-1])[::-1]
+		data['successful'] = data['costs'][-1] == 0
 		return data
 
 	# TODO: build something to create visualizations of safe set
@@ -128,14 +131,14 @@ class Experiment:
 				'actions': demo_full_data[i]["ac"],
 				'costs': demo_full_data[i]["costs"],
 				'total_cost': demo_full_data[i]["cost_sum"],
-				'values' : demo_full_data[i]["values"]
+				'values' : demo_full_data[i]["values"],
+				'successful': True
 			}
 			demo_samples.append(demo_data)
 
 		self.all_samples.append(demo_samples)
 		self.controller.train(demo_samples)
 		self.controller.save_controller_state()
-
 		for i in range(self.num_iterations):
 			print("##### Iteration %d #####"%i)
 			self.controller.set_goal(self.goal_schedule(i))
@@ -143,6 +146,7 @@ class Experiment:
 
 			if not self.parallelize_rollouts:
 				samples = []
+				valid_starts = []
 				for _ in range(self.samples_per_iteration):
 					if self.variable_start_state_cost == "towards":
 						print("GOT HERE!!!")
@@ -151,6 +155,7 @@ class Experiment:
 					else:
 						valid_start = self.controller.compute_valid_start_state()
 					samples.append(self.sample(valid_start))
+					valid_starts.append(valid_start)
 			else:
 				if self.variable_start_state_cost == "towards":
 					valid_starts = [self.controller.compute_valid_start_state(self.desired_starts[i]) for _ in range(self.samples_per_iteration)]
@@ -159,6 +164,7 @@ class Experiment:
 				samples = get_samples_parallel(valid_starts, self.exp_cfg, self.goal_schedule(i))
 
 			self.all_samples.append(samples)
+			self.all_valid_starts.append(valid_starts)
 
 			mean_cost = np.mean([s['total_cost'] for s in samples])
 			self.mean_costs.append(mean_cost)

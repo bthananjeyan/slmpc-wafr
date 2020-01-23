@@ -123,8 +123,11 @@ class LMPC(Controller):
 			self.value_ss_approx_models.append(value_ss_approx_model)
 		elif self.ss_approx_mode == "knn":
 			value_ss_approx_model = knn(n_neighbors=1)
-			value_ss_approx_model.fit(list(itertools.chain.from_iterable(self.SS[-1].state_data)))
-			self.value_ss_approx_models.append(value_ss_approx_model)	
+			if len(self.SS[-1].state_data) > 0:
+				value_ss_approx_model.fit(list(itertools.chain.from_iterable(self.SS[-1].state_data)))
+				self.value_ss_approx_models.append(value_ss_approx_model)	
+			else:
+				self.value_ss_approx_models.append(None)
 		else:
 			raise Exception("Unsupported SS Approx Mode")
 
@@ -220,8 +223,14 @@ class LMPC(Controller):
 				self.value_ss_approx_models.append(value_ss_approx_model)
 			elif self.ss_approx_mode == "knn":
 				value_ss_approx_model = knn(n_neighbors=1)
-				value_ss_approx_model.fit(list(itertools.chain.from_iterable(ss.state_data)))
-				self.value_ss_approx_models.append(value_ss_approx_model)	
+				# value_ss_approx_model.fit(list(itertools.chain.from_iterable(ss.state_data)))
+				# self.value_ss_approx_models.append(value_ss_approx_model)	
+				if len(ss.state_data) > 0:
+					value_ss_approx_model.fit(list(itertools.chain.from_iterable(ss.state_data)))
+					self.value_ss_approx_models.append(value_ss_approx_model)
+				else:
+					self.value_ss_approx_models.append(None)
+
 			else:
 				raise("Unsupported SS Approx Mode")
 
@@ -290,8 +299,11 @@ class LMPC(Controller):
 		# up values accordingly if needed
 		value_mat = []
 		for value_func, value_ss_approx_model in zip(self.value_funcs, self.value_ss_approx_models):
-			res = self.unsafe(states, value_ss_approx_model)
-			values = value_func.value(states) + 1e6 * res # blow up unsafe values
+			if value_ss_approx_model is not None:
+				res = self.unsafe(states, value_ss_approx_model)
+				values = value_func.value(states) + 1e6 * res # blow up unsafe values
+			else:
+				values = value_func.value(states)
 			value_mat.append(value_func.value(states))
 		value_mat = np.vstack(value_mat)
 		return np.min(value_mat, axis=0)
@@ -393,7 +405,11 @@ class LMPC(Controller):
 			# Expand toward desired_start
 			start_state_opt_costs = np.zeros(len(pred_trajs[:, 0]))
 			for i in range(1, pred_trajs.shape[1]-1):
-				start_state_opt_costs += np.sum((pred_trajs[:, i] - desired_start)**2, axis=1)
+				# TODO: cleanup:
+				if self.env_name == "pointbot":
+					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [0, 2]] - np.array([desired_start[0], desired_start[2]]) )**2, axis=1)
+				else:
+					start_state_opt_costs += np.sum((pred_trajs[:, i] - desired_start)**2, axis=1)
 		else:
 			raise Exception("Unsupported Start State Selection Cost Function")
 

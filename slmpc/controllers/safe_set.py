@@ -24,7 +24,8 @@ class SafeSet:
 			return np.array(self.state_data)[:,t,:]
 
 	def add_sample(self, sample):
-		self.state_data.append(sample['states'])
+		if sample['successful']:
+			self.state_data.append(sample['states'])
 
 	def load_data(self, state_data):
 		self.state_data = state_data
