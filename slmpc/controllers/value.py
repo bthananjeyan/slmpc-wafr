@@ -50,7 +50,7 @@ class ValueFunc:
 		if approx_mode == "linear":
 			self.model = Ridge(alpha=0) 
 		elif approx_mode == "knn":
-			self.model = knn(n_neighbors=5) # TODO: think about n_neighbors
+			self.model = knn(n_neighbors=5)
 		elif approx_mode == "pe":
 			self.graph = tf.Graph()
 			with self.graph.as_default():
@@ -92,7 +92,7 @@ class ValueFunc:
 			self.model.fit(self.state_fit_data)
 		elif self.approx_mode == "pe":
 			TD = False
-			self.model.train(self.state_fit_data, self.value_fit_data[...,np.newaxis], epochs=100)
+			self.model.train(self.state_fit_data, self.value_fit_data[...,np.newaxis], epochs=10)
 			if TD:
 				def td_iteration():
 					self.next_state_fit_data = np.concatenate([s[1:] for s in self.state_data], axis=0)

@@ -61,6 +61,8 @@ class Experiment:
 		self.parallelize_rollouts = exp_cfg.parallelize_rollouts
 
 		self.goal_schedule = exp_cfg.goal_schedule
+		self.desired_starts = exp_cfg.desired_starts
+		self.variable_start_state_cost = exp_cfg.variable_start_state_cost
 
 		self.log_all_data = exp_cfg.log_all_data
 		self.save_dir = self.exp_cfg.save_dir
@@ -141,12 +143,20 @@ class Experiment:
 			if not self.parallelize_rollouts:
 				samples = []
 				for _ in range(self.samples_per_iteration):
-					valid_start = self.controller.compute_valid_start_state()
+					if self.variable_start_state_cost == "towards":
+						valid_start = self.controller.compute_valid_start_state(self.desired_starts[i])
+					else:
+						valid_start = self.controller.compute_valid_start_state()
 					samples.append(self.sample(valid_start))
 			else:
-				 valid_starts = [self.controller.compute_valid_start_state() for _ in range(self.samples_per_iteration)]
-				 samples = get_samples_parallel(valid_starts, self.exp_cfg, self.goal_schedule(i))
-				 # assert(False)
+				valid_starts = [self.controller.compute_valid_start_state() for _ in range(self.samples_per_iteration)]
+				samples = get_samples_parallel(valid_starts, self.exp_cfg, self.goal_schedule(i))
+
+				if self.variable_start_state_cost == "towards":
+					valid_starts = [self.controller.compute_valid_start_state(self.desired_starts[i]) for _ in range(self.samples_per_iteration)]
+				else:
+					valid_starts = [self.controller.compute_valid_start_state() for _ in range(self.samples_per_iteration)]
+				samples = get_samples_parallel(valid_starts, self.exp_cfg)
 
 			self.all_samples.append(samples)
 
