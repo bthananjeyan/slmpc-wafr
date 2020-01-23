@@ -43,6 +43,7 @@ def get_sample(start_state, exp_cfg, goal_state=None):
 		data['costs'].append(cost)
 	data['total_cost'] = np.sum(data['costs'])
 	data['values'] = np.cumsum(data['costs'][::-1])[::-1]
+	data['successful'] = data['costs'][-1] == 0
 	return data
 
 
@@ -112,6 +113,7 @@ class Experiment:
 			data['costs'].append(cost)
 		data['total_cost'] = np.sum(data['costs'])
 		data['values'] = np.cumsum(data['costs'][::-1])[::-1]
+		data['successful'] = data['costs'][-1] == 0
 		return data
 
 	# TODO: build something to create visualizations of safe set
@@ -128,7 +130,8 @@ class Experiment:
 				'actions': demo_full_data[i]["ac"],
 				'costs': demo_full_data[i]["costs"],
 				'total_cost': demo_full_data[i]["cost_sum"],
-				'values' : demo_full_data[i]["values"]
+				'values' : demo_full_data[i]["values"],
+				'successful' : True
 			}
 			demo_samples.append(demo_data)
 
