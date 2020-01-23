@@ -147,6 +147,7 @@ class LMPC(Controller):
 		valid_start = None
 
 		if self.variable_start_state and self.variable_start_state_cost == "towards":
+			print("DESIRED START", desired_start)
 			# TODO: make this less hacky by just taking normal euclidean distance, including velocities...
 			sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm( np.array([x[0], x[2]]) - np.array([desired_start[0], desired_start[2]]) ) )
 			# sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm(x - desired_start) )

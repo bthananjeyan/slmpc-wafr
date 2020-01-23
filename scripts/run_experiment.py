@@ -21,7 +21,7 @@ def pointbot_config(exp_cfg):
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 3
 	exp_cfg.parallelize_cem = False
-	exp_cfg.parallelize_rollouts = False
+	exp_cfg.parallelize_rollouts = True
 	exp_cfg.model_logdir = 'model_logs'
 	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for pointbot?
 	return PointBot()
@@ -42,7 +42,11 @@ def cartpole_config(exp_cfg):
 
 
 def pointbot_exp1_config(exp_cfg):
+<<<<<<< HEAD
 	exp_cfg.samples_per_iteration = 1
+=======
+	exp_cfg.samples_per_iteration = 100
+>>>>>>> 1f49c549fd23a2b42da471900fab75d8224f6c25
 	exp_cfg.num_iterations = 5
 	from slmpc.envs.pointbot_const import GOAL_STATE
 	exp_cfg.goal_schedule = NoSwitchSchedule(None, GOAL_STATE)
@@ -91,7 +95,7 @@ if __name__ == '__main__':
 						help='Environment name: select from [pointbot, cartpole]')
 	parser.add_argument('-ctrl', type=str, default="random",
 						help='Controller name: select from [random, lmpc_expect]')
-	parser.add_argument('-exp_id', type=str, default="1",
+	parser.add_argument('-exp_id', type=str, default="p1",
 						help='Experiment ID: select from [p1, p2]')
 	args = parser.parse_args()
 
