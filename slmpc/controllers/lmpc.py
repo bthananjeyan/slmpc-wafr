@@ -349,7 +349,7 @@ class LMPC(Controller):
 				state_train_data = pred_trajs_filtered.reshape((-1, pred_trajs_filtered.shape[-1]))
 				value_train_data = value_targets_filtered.flatten()
 				cost_train_data = costs_filtered.flatten()
-				s = {"states": state_train_data[:self.max_update_SS_value], "values": value_train_data[:self.max_update_SS_value], "costs": cost_train_data[:self.max_update_SS_value]}
+				s = {"states": state_train_data[:self.max_update_SS_value], "values": value_train_data[:self.max_update_SS_value], "costs": cost_train_data[:self.max_update_SS_value], 'successful': True}
 				# Add samples to most recent safe set and value_func train set
 				self.SS[-1].add_sample(s)
 				self.value_funcs[-1].add_sample(s)
@@ -422,7 +422,7 @@ class LMPC(Controller):
 				value_train_data = value_targets_filtered.flatten()
 				cost_train_data = costs_filtered.flatten()
 
-				s = {"states": state_train_data[:self.max_udpate_SS_value], "values": value_train_data[:self.max_udpate_SS_value], "costs": cost_train_data[:self.max_udpate_SS_value]}
+				s = {"states": state_train_data[:self.max_udpate_SS_value], "values": value_train_data[:self.max_udpate_SS_value], "costs": cost_train_data[:self.max_udpate_SS_value], "successful": True}
 				# Add samples to most recent safe set and value_func train set
 				self.SS[-1].add_sample(s)
 				self.value_funcs[-1].add_sample(s)
