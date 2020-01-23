@@ -144,12 +144,14 @@ class Experiment:
 				samples = []
 				for _ in range(self.samples_per_iteration):
 					if self.variable_start_state_cost == "towards":
+						print("GOT HERE!!!")
+						print(self.desired_starts[i])
+						assert(False)
 						valid_start = self.controller.compute_valid_start_state(self.desired_starts[i])
 					else:
 						valid_start = self.controller.compute_valid_start_state()
 					samples.append(self.sample(valid_start))
 			else:
-				valid_starts = [self.controller.compute_valid_start_state() for _ in range(self.samples_per_iteration)]
 				if self.variable_start_state_cost == "towards":
 					valid_starts = [self.controller.compute_valid_start_state(self.desired_starts[i]) for _ in range(self.samples_per_iteration)]
 				else:
