@@ -147,7 +147,6 @@ class Experiment:
 					if self.variable_start_state_cost == "towards":
 						print("GOT HERE!!!")
 						print(self.desired_starts[i])
-						assert(False)
 						valid_start = self.controller.compute_valid_start_state(self.desired_starts[i])
 					else:
 						valid_start = self.controller.compute_valid_start_state()

@@ -95,7 +95,6 @@ class ValueFunc:
 		self.state_fit_data = np.concatenate(state_fit_data, axis=0)
 
 		if self.approx_mode == "linear":
-			print(self.state_fit_data.shape, self.value_fit_data.shape)
 			# import IPython; IPython.embed()
 			self.model.fit(self.state_fit_data, self.value_fit_data)
 		elif self.approx_mode == "knn":

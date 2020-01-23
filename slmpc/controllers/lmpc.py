@@ -457,7 +457,6 @@ class LMPC(Controller):
 
 	
 	def restore_controller_state(self, model_logdir=None):
-		assert 0
 		if model_logdir is not None:
 			self.model_logdir = model_logdir
 		# Reload safe set model and data
