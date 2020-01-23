@@ -132,8 +132,7 @@ class Experiment:
 				'costs': demo_full_data[i]["costs"],
 				'total_cost': demo_full_data[i]["cost_sum"],
 				'values' : demo_full_data[i]["values"],
-				'successful': True
-			}
+				'successful': True}
 			demo_samples.append(demo_data)
 
 		self.all_samples.append(demo_samples)

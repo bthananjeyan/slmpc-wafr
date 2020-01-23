@@ -58,6 +58,7 @@ def pointbot_exp1_config(exp_cfg):
 	exp_cfg.num_iterations = 15
 	from slmpc.envs.pointbot_const import GOAL_STATE
 	exp_cfg.goal_schedule = NoSwitchSchedule(None, GOAL_STATE)
+	exp_cfg.demo_path = "demos/pointbot/demos_1.p"
 
 def pointbot_exp2_config(exp_cfg):
 	exp_cfg.samples_per_iteration = 5
@@ -71,12 +72,7 @@ def config(env_name, controller_type, exp_id):
 	exp_cfg.controller_type = controller_type
 	exp_cfg.log_all_data = True
 
-	if exp_id == 'p1':
-		pointbot_exp1_config(exp_cfg)
-	elif exp_id == 'p2':
-		pointbot_exp2_config(exp_cfg)
-	else:
-		raise Exception("Unknown Experiment ID.")
+
 
 	if env_name == "pointbot":
 		env = pointbot_config(exp_cfg)
@@ -85,9 +81,20 @@ def config(env_name, controller_type, exp_id):
 	else:
 		raise Exception("Unsupported environment.")
 
+
+	# experiment specific overrides
+	if exp_id == 'p1':
+		pointbot_exp1_config(exp_cfg)
+	elif exp_id == 'p2':
+		pointbot_exp2_config(exp_cfg)
+	else:
+		raise Exception("Unknown Experiment ID.")
+
+
 	exp_cfg.env_name = env.env_name
 	exp_cfg.ac_lb = env.action_space.low
 	exp_cfg.ac_ub = env.action_space.high
+
 
 	return exp_cfg, env
 

@@ -51,12 +51,8 @@ class PointBot(Env, utils.EzPickle):
         self.name = "pointbot"
         self.env_name = 'PointBot-v0'
         self.cem_env = cem_env
-        self.mode = 1 # TODO: don't hardcode this @Brijen there is a bug with mode, not sure what desired behavior is
+        self.mode = 2 # TODO: don't hardcode this @Brijen there is a bug with mode, not sure what desired behavior is
 
-    def set_mode(self, mode):
-        self.mode = mode
-        if self.mode == 1:
-            self.start_state = [-100, 0, 0, 0]
 
     def step(self, a, log=False):
         a = process_action(a)
@@ -152,12 +148,11 @@ class PointBotTeacher(object):
         O, A, cost_sum, costs = [obs], [], 0, []
         noise_std = 0.2
         for i in range(HORIZON):
-            if self.env.mode == 1:
-                noise_idx = np.random.randint(int(HORIZON * 2 / 3))
-                if i < HORIZON / 2:
-                    action = [0.1, 0.1]
-                else:
-                    action = self._expert_control(obs, i)
+            noise_idx = np.random.randint(int(HORIZON * 2 / 3))
+            if i < HORIZON / 2:
+                action = [0.1, 0.1]
+            else:
+                action = self._expert_control(obs, i)
             if i < noise_idx:
                 action = (np.array(action) +  np.random.normal(0, noise_std, self.env.action_space.shape[0])).tolist()
 
