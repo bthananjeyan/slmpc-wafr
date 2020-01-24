@@ -42,6 +42,7 @@ class LMPC(Controller):
 
 	def __init__(self, cfg):
 		self.env_name = cfg.env_name
+		self.name = cfg.name
 		self.SS = []
 		self.value_funcs = []
 		self.all_safe_states = []
@@ -153,7 +154,12 @@ class LMPC(Controller):
 		if self.variable_start_state and self.variable_start_state_cost == "towards":
 			print("DESIRED START", desired_start)
 			# TODO: make this less hacky by just taking normal euclidean distance, including velocities...
-			sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm( np.array([x[0], x[2]]) - np.array([desired_start[0], desired_start[2]]) ) )
+			if self.name == "pointbot":
+				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm( np.array([x[0], x[2]]) - np.array([desired_start[0], desired_start[2]]) ) )
+			elif self.name == 'cartpole':
+				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.abs( x[2] - desired_start[2] ) )
+			else:
+				raise Exception("Unsupported environment")
 			# sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm(x - desired_start) )
 
 		# Find a valid start state
@@ -173,7 +179,9 @@ class LMPC(Controller):
 				for _ in range(self.n_samples_start_state_opt):
 					traj, traj_valid = self.traj_opt(sampled_start, desired_start)
 					if traj_valid:
-						valid_starts.append(traj[-self.optimizer_params["plan_hor"]])
+						valid_start_section = traj[-self.optimizer_params["plan_hor"]:]
+						valid_start = valid_start_section[np.random.randint(len(valid_start_section))]
+						valid_starts.append(valid_start)
 						valid_trajs.append(traj)
 
 				print("NUM VALIDS", len(valid_starts))
@@ -263,10 +271,10 @@ class LMPC(Controller):
 			else:
 				costs, rollouts = self._predict_and_eval(obs, samples)
 			costs = costs.reshape(self.optimizer_params["npart"], self.optimizer_params["popsize"]).T.mean(1)
-			print(" CEM Iteration ", i, "Cost: ", np.mean(costs), np.min(costs))
+			# print(" CEM Iteration ", i, "Cost: ", np.mean(costs), np.min(costs))
 			elites = samples[np.argsort(costs)][:self.optimizer_params["num_elites"]]
 			min_costs = np.sort(costs)[:self.optimizer_params["num_elites"]]
-			print("MAX MIN COST: ", np.max(min_costs))
+			# print("MAX MIN COST: ", np.max(min_costs))
 
 			new_mean = np.mean(elites, axis=0)
 			new_var = np.var(elites, axis=0)
@@ -406,9 +414,12 @@ class LMPC(Controller):
 			start_state_opt_costs = np.zeros(len(pred_trajs[:, 0]))
 			for i in range(1, pred_trajs.shape[1]-1):
 				# TODO: cleanup:
-				if self.env_name == "pointbot":
+				if self.name == "pointbot":
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [0, 2]] - np.array([desired_start[0], desired_start[2]]) )**2, axis=1)
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] )**2, axis=1) # encourage low velocities
+				elif self.name == "cartpole":
+					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [2]] - np.array([desired_start[2]]) )**2, axis=1)
+					# start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] - np.array([desired_start[1, 3]]) )**2, axis=1) # TODO: add only if needed
 				else:
 					start_state_opt_costs += np.sum((pred_trajs[:, i] - desired_start)**2, axis=1)
 		else:

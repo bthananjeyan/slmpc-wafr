@@ -151,8 +151,8 @@ class CartPole(Env, utils.EzPickle):
         self.t += self.dt
         self.hist.append(self.state)
         self.done = HORIZON <= self.time
-        if not self.cem_env:
-            print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
+        # if not self.cem_env:
+        #     print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
         return self.state, cur_cost, self.done, {}
 
     def vectorized_step(self, s, a):
@@ -170,7 +170,8 @@ class CartPole(Env, utils.EzPickle):
         return np.stack(trajectories, axis=1), np.array(costs).T
 
     def reset(self):
-        self.state = np.array(self.start_state) # TODO: update this to allow varied start states...
+        self.state = np.array(self.start_state)
+        self.state += (np.pi/16)*truncnorm.rvs(-1, 1, size=len(START_STATE)) # only had this when generating demos
         self.time = 0
         self.cost = []
         self.done = False
@@ -201,9 +202,11 @@ class CartPole(Env, utils.EzPickle):
             else:
                 return float(np.abs(s[2] - self.goal_state[2]) > GOAL_THRESH)
         if len(s.shape) == 2:
-            return np.abs(s[:,2] - self.goal_state[2])
+            safety_cost = 1 - np.apply_along_axis(lambda x: self.is_stable(x), 1, s).astype(int) # 0 if in goal set, 1 if not
+            # return np.abs(s[:,2] - self.goal_state[2])
+            return safety_cost * np.abs(s[:,2] - self.goal_state[2])
         else:
-            return np.abs(s[2] - self.goal_state[2])
+            return (1 - self.is_stable(s)) * np.abs(s[2] - self.goal_state[2])
 
     def values(self):
         return np.cumsum(np.array(self.cost)[::-1])[::-1]
@@ -231,9 +234,14 @@ class CartPoleTeacher(object):
         self.demonstrations = []
         self.outdir = "demos/cartpole"
 
-    def get_rollout(self):
+    def get_rollout(self, start_state=None):
         obs = self.env.reset()
-        O, A, cost_sum, costs = [obs], [], 0, []
+        if start_state is not None:
+            self.env.set_state(np.array(start_state))
+            O, A, cost_sum, costs = [np.array(start_state)], [], 0, []
+        else:
+            O, A, cost_sum, costs = [obs], [], 0, []
+
         noise_std = NOISE_STD
         for i in range(HORIZON):
             noise_idx = np.random.randint(int(HORIZON * 3 / 4))
@@ -251,15 +259,14 @@ class CartPoleTeacher(object):
             # cost = cost[0,0]
 
             obs, cost, done, _ = self.env.step(action)
-
-
-            O.append(obs)
+            O.append(np.array(obs))
             cost_sum += cost
             costs.append(cost)
 
         values = np.cumsum(costs[::-1])[::-1]
         print("OBS", obs, costs)
         if self.env.is_stable(obs):
+            print("STABLE")
             stabilizable_obs = O
         else:
             stabilizable_obs = []
@@ -288,10 +295,10 @@ if __name__=="__main__":
     teacher.save_demos(100)
     print("DONE DEMOS")
 
-    rollout = teacher.get_rollout()
+    rollout = teacher.get_rollout()      
     obs_rollout = rollout["obs"]
     acs_rollout = rollout["ac"]
-    print("ACS ROLLOUT", acs_rollout)
+    # print("ACS ROLLOUT", acs_rollout)
 
     for i in range(len(obs_rollout)):
         t = DT * i

@@ -43,7 +43,7 @@ def get_sample(start_state, exp_cfg, goal_state=None):
 		data['costs'].append(cost)
 	data['total_cost'] = np.sum(data['costs'])
 	data['values'] = np.cumsum(data['costs'][::-1])[::-1]
-	data['successful'] = data['costs'][-1] == 0
+	data['successful'] = int(data['costs'][-1]) == 0
 	return data
 
 
@@ -114,7 +114,7 @@ class Experiment:
 			data['costs'].append(cost)
 		data['total_cost'] = np.sum(data['costs'])
 		data['values'] = np.cumsum(data['costs'][::-1])[::-1]
-		data['successful'] = data['costs'][-1] == 0
+		data['successful'] = int(data['costs'][-1]) == 0
 		return data
 
 	# TODO: build something to create visualizations of safe set

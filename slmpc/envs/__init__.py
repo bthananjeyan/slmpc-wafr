@@ -7,3 +7,7 @@ register(
 register(
 	id='CartPole-v3',
 	entry_point='slmpc.envs.cartpole:CartPole')
+
+register(
+	id='ReacherSparse-v0',
+	entry_point='slmpc.envs.reacher:ReacherSparse3DEnv')
