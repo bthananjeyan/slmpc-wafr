@@ -408,6 +408,7 @@ class LMPC(Controller):
 				# TODO: cleanup:
 				if self.env_name == "pointbot":
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [0, 2]] - np.array([desired_start[0], desired_start[2]]) )**2, axis=1)
+					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] )**2, axis=1) # encourage low velocities
 				else:
 					start_state_opt_costs += np.sum((pred_trajs[:, i] - desired_start)**2, axis=1)
 		else:
