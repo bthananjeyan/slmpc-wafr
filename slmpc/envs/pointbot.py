@@ -51,7 +51,6 @@ class PointBot(Env, utils.EzPickle):
         self.name = "pointbot"
         self.env_name = 'PointBot-v0'
         self.cem_env = cem_env
-        self.mode = 2 # TODO: don't hardcode this @Brijen there is a bug with mode, not sure what desired behavior is
 
 
     def step(self, a, log=False):
@@ -143,9 +142,16 @@ class PointBotTeacher(object):
         self.demonstrations = []
         self.outdir = "demos/pointbot"
 
-    def get_rollout(self):
+    def get_rollout(self, start_state=None):
+        print("START STATE", start_state)
+
         obs = self.env.reset()
-        O, A, cost_sum, costs = [obs], [], 0, []
+        if start_state is not None:
+            self.env.set_state(np.array(start_state))
+            O, A, cost_sum, costs = [np.array(start_state)], [], 0, []
+        else:
+            O, A, cost_sum, costs = [obs], [], 0, []
+
         noise_std = 0.2
         for i in range(HORIZON):
             noise_idx = np.random.randint(int(HORIZON * 2 / 3))
@@ -172,6 +178,7 @@ class PointBotTeacher(object):
             return self.get_rollout()
 
         print(costs)
+        # print(O)
 
         return {
             "obs": O,
@@ -183,8 +190,11 @@ class PointBotTeacher(object):
         }
 
     def save_demos(self, num_demos):
-        rollouts = [teacher.get_rollout() for i in range(num_demos)]
-        pickle.dump(rollouts, open( osp.join(self.outdir, "demos_" + str(self.env.mode) + ".p"), "wb" ) )
+        up_start_state = [START_STATE[0], START_STATE[1], START_STATE[2]+20, START_STATE[3]]
+        down_start_state = [START_STATE[0], START_STATE[1], START_STATE[2]-20, START_STATE[3]]
+        start_states = [START_STATE + np.random.randn(4) for _ in range(50)] + [up_start_state + np.random.randn(4) for _ in range(25)] + [down_start_state + np.random.randn(4) for _ in range(25)]
+        rollouts = [teacher.get_rollout(start_states[i]) for i in range(num_demos)]
+        pickle.dump(rollouts, open( osp.join(self.outdir, "demos.p"), "wb" ) )
 
     def _get_gain(self, t):
         return self.Ks[t]

@@ -146,20 +146,24 @@ class Experiment:
 			if not self.parallelize_rollouts:
 				samples = []
 				valid_starts = []
+
+				# Same start state for all samples per iteration
+				if self.variable_start_state_cost == "towards":
+					valid_start = self.controller.compute_valid_start_state(self.desired_starts[i])
+				else:
+					valid_start = self.controller.compute_valid_start_state()
+
 				for _ in range(self.samples_per_iteration):
-					if self.variable_start_state_cost == "towards":
-						print("GOT HERE!!!")
-						print(self.desired_starts[i])
-						valid_start = self.controller.compute_valid_start_state(self.desired_starts[i])
-					else:
-						valid_start = self.controller.compute_valid_start_state()
 					samples.append(self.sample(valid_start))
 					valid_starts.append(valid_start)
 			else:
+				# Same start state for all samples per iteration
 				if self.variable_start_state_cost == "towards":
-					valid_starts = [self.controller.compute_valid_start_state(self.desired_starts[i]) for _ in range(self.samples_per_iteration)]
+					valid_start = self.controller.compute_valid_start_state(self.desired_starts[i])
 				else:
-					valid_starts = [self.controller.compute_valid_start_state() for _ in range(self.samples_per_iteration)]
+					valid_start = self.controller.compute_valid_start_state()
+
+				valid_starts = [valid_start for _ in range(self.samples_per_iteration)]
 				samples = get_samples_parallel(valid_starts, self.exp_cfg, self.goal_schedule(i))
 
 			self.all_samples.append(samples)
