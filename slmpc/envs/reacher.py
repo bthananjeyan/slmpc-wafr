@@ -19,7 +19,7 @@ class ReacherSparse3DEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         self.viewer, self.time = None, 0
         utils.EzPickle.__init__(self)
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.goal = np.copy(TARGET)
+        self.goal_state = np.copy(TARGET)
         mujoco_env.MujocoEnv.__init__(self, os.path.join(dir_path, 'assets/reacher3d.xml'), 2)
         self.env_name = 'ReacherSparse-v0'
 
@@ -27,7 +27,7 @@ class ReacherSparse3DEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         self.do_simulation(a, self.frame_skip)
         self.time += 1
         ob = self._get_obs()
-        cost = (np.sum(np.square(self.get_EE_pos(ob[None]) - self.goal)) > THRESH).astype(np.float32)
+        cost = (np.sum(np.square(self.get_EE_pos(ob[None]) - self.goal_state)) > THRESH).astype(np.float32)
         done = HORIZON <= self.time
         if done and not self.is_stable(ob):
             cost += FAILURE_COST
@@ -38,7 +38,7 @@ class ReacherSparse3DEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
 
     def post_process(self, obs, acs, costs):
-        ob_costs = np.array([np.sum(np.square(self.get_EE_pos(ob[None]) - self.goal)) for ob in obs])
+        ob_costs = np.array([np.sum(np.square(self.get_EE_pos(ob[None]) - self.goal_state)) for ob in obs])
         return (ob_costs[:-1] > THRESH).astype(np.float32)
 
     def viewer_setup(self):
@@ -52,8 +52,8 @@ class ReacherSparse3DEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         qpos[-3:] += np.random.normal(loc=0, scale=0.1, size=[3])
         qvel[-3:] = 0
         self.time = 0
-        # self.goal = qpos[-3:]
-        qpos[-3:] = self.goal = np.copy(TARGET)
+        # self.goal_state = qpos[-3:]
+        qpos[-3:] = self.goal_state = np.copy(TARGET)
         self.set_state(qpos, qvel)
         return self._get_obs()
 
@@ -91,4 +91,4 @@ class ReacherSparse3DEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         return cur_end
 
     def is_stable(self, ob):
-        return (np.sum(np.square(self.get_EE_pos(ob[None]) - self.goal)) < THRESH).astype(bool)
+        return (np.sum(np.square(self.get_EE_pos(ob[None]) - self.goal_state)) < THRESH).astype(bool)

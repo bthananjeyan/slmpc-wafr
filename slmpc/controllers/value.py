@@ -13,14 +13,14 @@ from slmpc.controllers.utils import process_sample_for_goal
 from slmpc.modeling.layers import FC
 from slmpc.modeling.models import BNN
 
-def value_pe_constructor(sess, load_model, model_dir):
+def value_pe_constructor(sess, dO, load_model, model_dir):
 	model = BNN(DotMap(
 		name="value", num_networks=5,
 		sess=sess, load_model=load_model,
 		model_dir=model_dir
 	))
 	if not load_model:
-		model.add(FC(500, input_dim=4, activation='swish', weight_decay=0.0001))
+		model.add(FC(500, input_dim=dO, activation='swish', weight_decay=0.0001))
 		model.add(FC(500, activation='swish', weight_decay=0.00025))
 		model.add(FC(500, activation='swish', weight_decay=0.00025))
 		model.add(FC(1, weight_decay=0.0005, activation='ReLU'))
@@ -28,7 +28,7 @@ def value_pe_constructor(sess, load_model, model_dir):
 	model.finalize(tf.compat.v1.train.AdamOptimizer, {"learning_rate": 0.001}, suffix = "val")
 	return model
 
-def create_value_function_new_goal(v_old, goal_fn):
+def create_value_function_new_goal(v_old, goal_fn, dO):
 	assert 0
 	data = v_old.get_data()
 	state_data, value_data, cost_data = [], [], []
@@ -41,15 +41,16 @@ def create_value_function_new_goal(v_old, goal_fn):
 		state_data.append(new_sample['states'])
 		value_data.append(new_sample['values'])
 		cost_data.append(new_sample['costs'])
-	return ValueFunc(v_old.approx_mode, load_model=False, model_dir=None, state_data=state_data, value_data=value_data, cost_data=cost_data)
+	return ValueFunc(v_old.approx_mode, dO, load_model=False, model_dir=None, state_data=state_data, value_data=value_data, cost_data=cost_data)
 
 # TODO: add goal conditioned filter or something
 class ValueFunc:
-	def __init__(self, approx_mode, load_model=False, model_dir=None, state_data=(), value_data=(), cost_data=()):
+	def __init__(self, approx_mode, dO, load_model=False, model_dir=None, state_data=(), value_data=(), cost_data=()):
 		self.state_data = list(state_data) # nsamples X horizon X state_dim
 		self.value_data = list(value_data) # nsamples X horizon
 		self.cost_data = list(cost_data) # nsamples X horizon
 		self.approx_mode = approx_mode
+		self.dO = dO
 		self.model_fit = load_model
 		if approx_mode == "linear":
 			self.model = Ridge(alpha=0) 
@@ -64,7 +65,7 @@ class ValueFunc:
 			with self.graph.as_default():
 				self.sess = tf.compat.v1.Session()
 				# TODO: store value func params in a dotmap config
-				self.model = value_pe_constructor(self.sess, load_model, model_dir)
+				self.model = value_pe_constructor(self.sess, self.dO, load_model, model_dir)
 		else:
 			raise("Unsupported value approximation mode")
 

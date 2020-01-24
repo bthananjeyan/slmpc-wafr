@@ -29,7 +29,7 @@ def pointbot_config(exp_cfg):
 	exp_cfg.n_samples_start_state_opt = 5
 	exp_cfg.start_state_opt_success_thresh = 0.6
 	exp_cfg.ss_value_train_success_thresh = 0.7
-	exp_cfg.desired_starts = [[-100, 0, 0, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
+	exp_cfg.desired_starts = [[-50, 0, 25, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
 	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
 	return PointBot()
@@ -60,15 +60,15 @@ def cartpole_config(exp_cfg):
 # TODO: make sure to remove the goal from the observation for reacher lol
 def reacher_config(exp_cfg):
 	exp_cfg.save_dir = "logs/reacher"
-	exp_cfg.demo_path = "demos/reacher/demos.p"
+	exp_cfg.demo_path = "demos/reacher/logs.mat"
 	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
 	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
 	exp_cfg.variable_start_state = False
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 3
-	exp_cfg.parallelize_cem = False
-	exp_cfg.parallelize_rollouts = True
+	exp_cfg.parallelize_cem = True
+	exp_cfg.parallelize_rollouts = False
 	exp_cfg.model_logdir = 'model_logs'
 	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": 0} # These kind of work for pointbot?
 	exp_cfg.n_samples_start_state_opt = 5
@@ -101,7 +101,7 @@ def cartpole_exp1_config(exp_cfg):
 def reacher_exp1_config(exp_cfg):
 	exp_cfg.samples_per_iteration = 5
 	exp_cfg.num_iterations = 15
-	exp_cfg.goal_schedule = NoSwitchSchedule(None, np.array([0.13345871, 0.21923056, -0.10861196]))
+	exp_cfg.goal_schedule = NoSwitchSchedule(None, [0.13345871, 0.21923056, -0.10861196])
 
 
 def config(env_name, controller_type, exp_id):
@@ -134,12 +134,17 @@ def config(env_name, controller_type, exp_id):
 	exp_cfg.name = env_name
 	exp_cfg.ac_lb = env.action_space.low
 	exp_cfg.ac_ub = env.action_space.high
-
+	exp_cfg.dO = env.observation_space.shape[0]
+	exp_cfg.dU = env.action_space.shape[0]
 
 	return exp_cfg, env
 
 if __name__ == '__main__':
-	multiprocessing.set_start_method('spawn')
+	try:
+	    multiprocessing.set_start_method('spawn')
+	except RuntimeError:
+	    pass
+	# multiprocessing.set_start_method('spawn')
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-env_name', type=str, default="pointbot",
 						help='Environment name: select from [pointbot, cartpole, reacher]')

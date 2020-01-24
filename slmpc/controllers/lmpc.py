@@ -20,7 +20,11 @@ import copy
 
 
 def get_preds(acs, env_name, state):
-	local_env = gym.make(env_name, cem_env=True)
+	if env_name == 'ReacherSparse-v0':
+		local_env = gym.make(env_name)
+	else:
+		local_env = gym.make(env_name, cem_env=True)
+
 	local_env.reset()
 	local_env.set_state(state)
 
@@ -78,8 +82,15 @@ class LMPC(Controller):
 			self.ac_ub = cfg.ac_ub
 			self.prev_sol = np.tile((self.ac_lb + self.ac_ub) / 2, [self.optimizer_params["plan_hor"]])
 			self.init_var = np.tile(np.square(self.ac_ub - self.ac_lb) / 16, [self.optimizer_params["plan_hor"]])
-			self.dU = self.ac_lb.size
-			self.cem_env = gym.make(self.env_name, cem_env=True)
+			self.dU = cfg.dU 
+			self.dO = cfg.dO
+
+			if self.env_name == 'ReacherSparse-v0':
+				self.cem_env = gym.make(self.env_name)
+			else:
+				self.cem_env = gym.make(self.env_name, cem_env=True)
+
+			# self.cem_env = gym.make(self.env_name, cem_env=True)
 			self.ac_buf = np.array([]).reshape(0, self.dU)
 			self.parallelize_cem = cfg.parallelize_cem
 
@@ -112,7 +123,7 @@ class LMPC(Controller):
 	# Returns start state for next iteration
 	def train(self, samples):
 		self.SS.append(SafeSet())
-		self.value_funcs.append(ValueFunc(self.value_approx_mode))
+		self.value_funcs.append(ValueFunc(self.value_approx_mode, self.dO))
 
 		for s in samples:
 			self.SS[-1].add_sample(s)
@@ -209,14 +220,14 @@ class LMPC(Controller):
 		return pred_traj, 1 - invalid
 
 	def set_goal(self, goal_state):
-		if self.cem_env.goal_state == goal_state:
+		if list(self.cem_env.goal_state) == goal_state:
 			return
 		assert 0
 		self.cem_env.set_goal(goal_state)
 		goal_fn = self.cem_env.goal_fn
 		new_values = []
 		for value in self.value_funcs:
-			new_values.append(create_value_function_new_goal(value, goal_fn))
+			new_values.append(create_value_function_new_goal(value, goal_fn, self.dO))
 		self.value_funcs = new_values
 		for value in self.value_funcs:
 			value.fit()
@@ -271,10 +282,10 @@ class LMPC(Controller):
 			else:
 				costs, rollouts = self._predict_and_eval(obs, samples)
 			costs = costs.reshape(self.optimizer_params["npart"], self.optimizer_params["popsize"]).T.mean(1)
-			# print(" CEM Iteration ", i, "Cost: ", np.mean(costs), np.min(costs))
+			print(" CEM Iteration ", i, "Cost: ", np.mean(costs), np.min(costs))
 			elites = samples[np.argsort(costs)][:self.optimizer_params["num_elites"]]
 			min_costs = np.sort(costs)[:self.optimizer_params["num_elites"]]
-			# print("MAX MIN COST: ", np.max(min_costs))
+			print("MAX MIN COST: ", np.max(min_costs))
 
 			new_mean = np.mean(elites, axis=0)
 			new_var = np.var(elites, axis=0)
@@ -416,7 +427,7 @@ class LMPC(Controller):
 				# TODO: cleanup:
 				if self.name == "pointbot":
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [0, 2]] - np.array([desired_start[0], desired_start[2]]) )**2, axis=1)
-					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] )**2, axis=1) # encourage low velocities
+					# start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] )**2, axis=1) # encourage low velocities
 				elif self.name == "cartpole":
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [2]] - np.array([desired_start[2]]) )**2, axis=1)
 					# start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] - np.array([desired_start[1, 3]]) )**2, axis=1) # TODO: add only if needed
@@ -507,7 +518,7 @@ class LMPC(Controller):
 				state_data = value_func_data[i][0]
 				value_data = value_func_data[i][1]
 				cost_data = value_func_data[i][2]
-				self.value_funcs.append(ValueFunc(self.value_approx_mode, load_model=True, model_dir=os.path.join(value_models_base_dir, value_folder), state_data=state_data, value_data=value_data, cost_data=cost_data))
+				self.value_funcs.append(ValueFunc(self.value_approx_mode, self.dO, load_model=True, model_dir=os.path.join(value_models_base_dir, value_folder), state_data=state_data, value_data=value_data, cost_data=cost_data))
 
 		self.value_ss_approx_models = pickle.load( open(os.path.join(self.model_logdir, "value_ss", "value_ss_approx_models.pkl"), "rb") )
 

@@ -7,8 +7,29 @@ import concurrent.futures
 import gym
 import time
 import numpy as np
-
+import scipy.io as sio
 from slmpc.controllers import LMPC, RandomController
+
+def load_reacher_samples(demo_load_path, env, lower=0, upper=100, max_num_samples=100):
+    mat = sio.loadmat(demo_load_path)
+    print(mat.keys())
+    demo_samples = []
+    for i, acs in enumerate(mat['actions']):
+        demo_data = {}
+        demo_data['states'] = mat['observations'][i] # TODO: maybe exclude goal from obs?
+        demo_data['actions'] = acs
+        demo_data['costs'] = env.post_process(mat['observations'][i], acs, mat['rewards'][i])
+        demo_data['total_cost'] = np.sum(demo_data['costs'])
+        demo_data['values'] = np.cumsum(demo_data['costs'][::-1])[::-1]
+     
+        # Check if total cost is in reasonable range and that the goal was achieved at the end
+        if demo_data['values'][0] < upper and demo_data['values'][0] > lower and demo_data['costs'][-1] == 0:
+            demo_data['successful'] = True
+            if len(demo_samples) < max_num_samples:
+                demo_samples.append(demo_data)
+
+    return demo_samples
+
 
 def get_sample(start_state, exp_cfg, goal_state=None):
 	data = {
@@ -56,6 +77,7 @@ class Experiment:
 
 	def __init__(self, env, exp_cfg):
 		self.env = env
+		self.name = exp_cfg.name 
 		self.exp_cfg = exp_cfg
 		self.samples_per_iteration = self.exp_cfg.samples_per_iteration
 		self.num_iterations = self.exp_cfg.num_iterations
@@ -117,23 +139,24 @@ class Experiment:
 		data['successful'] = int(data['costs'][-1]) == 0
 		return data
 
-	# TODO: build something to create visualizations of safe set
-	# I would put this in the safe_set file.
 	def run(self):
 		self.reset()
 		# First train on demos
-		demo_full_data = pickle.load(open(self.demo_path, "rb"))
+		if self.name == "reacher":
+			demo_samples = load_reacher_samples(self.demo_path, self.env)
+		else:
+			demo_full_data = pickle.load(open(self.demo_path, "rb"))
 
-		demo_samples = []
-		for i in range(len(demo_full_data)):
-			demo_data = {
-				'states': demo_full_data[i]["obs"],
-				'actions': demo_full_data[i]["ac"],
-				'costs': demo_full_data[i]["costs"],
-				'total_cost': demo_full_data[i]["cost_sum"],
-				'values' : demo_full_data[i]["values"],
-				'successful': True}
-			demo_samples.append(demo_data)
+			demo_samples = []
+			for i in range(len(demo_full_data)):
+				demo_data = {
+					'states': demo_full_data[i]["obs"],
+					'actions': demo_full_data[i]["ac"],
+					'costs': demo_full_data[i]["costs"],
+					'total_cost': demo_full_data[i]["cost_sum"],
+					'values' : demo_full_data[i]["values"],
+					'successful': True}
+				demo_samples.append(demo_data)
 
 		self.all_samples.append(demo_samples)
 		self.controller.train(demo_samples)
