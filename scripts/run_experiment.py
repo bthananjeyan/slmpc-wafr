@@ -36,14 +36,14 @@ def cartpole_config(exp_cfg):
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 5
 	exp_cfg.parallelize_cem = False
-	exp_cfg.parallelize_rollouts = True
+	exp_cfg.parallelize_rollouts = False
 	exp_cfg.save_dir = "logs/cartpole"
 	exp_cfg.demo_path = "demos/cartpole/demos.p"
 	exp_cfg.ss_approx_mode = "knn"
 	exp_cfg.variable_start_state = False
 	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
 	exp_cfg.model_logdir = 'model_logs'
-	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for cartpole
+	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": 5} # These kind of work for cartpole
 	exp_cfg.n_samples_start_state_opt = 5
 	exp_cfg.start_state_opt_success_thresh = 0.6
 	exp_cfg.ss_value_train_success_thresh = 0.6

@@ -199,7 +199,10 @@ class CartPole(Env, utils.EzPickle):
                 return (np.abs(s[:,2] - self.goal_state[2]) > GOAL_THRESH).astype(float)
             else:
                 return float(np.abs(s[2] - self.goal_state[2]) > GOAL_THRESH)
-        return np.abs(s[2] - self.goal_state[2])
+        if len(s.shape) == 2:
+            return np.abs(s[:,2] - self.goal_state[2])
+        else:
+            return np.abs(s[2] - self.goal_state[2])
 
     def values(self):
         return np.cumsum(np.array(self.cost)[::-1])[::-1]
@@ -239,15 +242,22 @@ class CartPoleTeacher(object):
                 action = (np.array(action) +  np.random.normal(0, noise_std, self.env.action_space.shape[0])).tolist()
 
             A.append(action)
-            obs, cost, done, info = self.env.step(action)
+
+            # test vectorized dynamics
+            # o, ac = np.array(obs)[...,np.newaxis].T, np.array(action)[...,np.newaxis,np.newaxis]
+            # obs, cost = self.env.vectorized_step(o, ac)
+            # obs = obs[0,1]
+            # cost = cost[0,0]
+
+            obs, cost, done, _ = self.env.step(action)
+
+
             O.append(obs)
             cost_sum += cost
             costs.append(cost)
-            if done:
-                break
 
         values = np.cumsum(costs[::-1])[::-1]
-        print("OBS", obs)
+        print("OBS", obs, costs)
         if self.env.is_stable(obs):
             stabilizable_obs = O
         else:
