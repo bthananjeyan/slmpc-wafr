@@ -58,7 +58,6 @@ def pointbot_exp1_config(exp_cfg):
 	exp_cfg.num_iterations = 15
 	from slmpc.envs.pointbot_const import GOAL_STATE
 	exp_cfg.goal_schedule = NoSwitchSchedule(None, GOAL_STATE)
-	exp_cfg.demo_path = "demos/pointbot/demos_1.p"
 
 def pointbot_exp2_config(exp_cfg):
 	exp_cfg.samples_per_iteration = 5
