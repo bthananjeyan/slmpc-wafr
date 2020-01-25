@@ -354,6 +354,8 @@ class LMPC(Controller):
 		# they can be added to safe set and value buffer
 
 		safety_check = self.unsafe(pred_trajs[:, -1], self.ss_approx_model)
+		# print("SAFETY CHECK", safety_check)
+		# assert(False)
 		traj_value = self.compute_value(pred_trajs[:, -1])
 
 		costs_cumsum = np.apply_along_axis(lambda x: np.cumsum(np.array(x)[::-1])[::-1], 1, costs)

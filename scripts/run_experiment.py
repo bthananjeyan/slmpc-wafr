@@ -66,7 +66,7 @@ def nlinkarm_config(exp_cfg):
 	exp_cfg.variable_start_state = False
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
-	exp_cfg.alpha_thresh = 3
+	exp_cfg.alpha_thresh = 0.5
 	exp_cfg.parallelize_cem = False
 	exp_cfg.parallelize_rollouts = False
 	exp_cfg.model_logdir = 'model_logs'
