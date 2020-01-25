@@ -220,7 +220,7 @@ class LMPC(Controller):
 		return pred_traj, 1 - invalid
 
 	def set_goal(self, goal_state):
-		if list(self.cem_env.goal_state) == goal_state:
+		if list(self.cem_env.goal_state) == list(goal_state):
 			return
 		assert 0
 		self.cem_env.set_goal(goal_state)

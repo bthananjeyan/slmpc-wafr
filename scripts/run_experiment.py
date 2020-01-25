@@ -8,6 +8,7 @@ from dotmap import DotMap
 from slmpc.misc.experiment import Experiment
 from slmpc.envs.pointbot import PointBot
 from slmpc.envs.cartpole import CartPole
+from slmpc.envs.n_link_arm_env import NLinkArmEnv
 from slmpc.controllers import LMPC, RandomController
 from slmpc.misc import NoSwitchSchedule, SingleSwitchSchedule
 import numpy as np
@@ -57,6 +58,28 @@ def cartpole_config(exp_cfg):
 	exp_cfg.max_update_SS_value = 50
 	return CartPole()
 
+def nlinkarm_config(exp_cfg):
+	exp_cfg.save_dir = "logs/nlinkarm"
+	exp_cfg.demo_path = "demos/nlinkarm/demos.p"
+	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
+	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
+	exp_cfg.variable_start_state = False
+	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
+	exp_cfg.soln_mode = "cem"
+	exp_cfg.alpha_thresh = 3
+	exp_cfg.parallelize_cem = False
+	exp_cfg.parallelize_rollouts = False
+	exp_cfg.model_logdir = 'model_logs'
+	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": -5} # These kind of work for pointbot?
+	exp_cfg.n_samples_start_state_opt = 5
+	exp_cfg.start_state_opt_success_thresh = 0.6
+	exp_cfg.ss_value_train_success_thresh = 0.7
+	exp_cfg.desired_starts = [[-50, 0, 25, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
+	exp_cfg.update_SS_and_value_func_CEM = False
+	exp_cfg.max_update_SS_value = 50
+	return NLinkArmEnv()
+
+
 # TODO: make sure to remove the goal from the observation for reacher lol
 def reacher_config(exp_cfg):
 	exp_cfg.save_dir = "logs/reacher"
@@ -103,6 +126,10 @@ def reacher_exp1_config(exp_cfg):
 	exp_cfg.num_iterations = 15
 	exp_cfg.goal_schedule = NoSwitchSchedule(None, [0.13345871, 0.21923056, -0.10861196])
 
+def nlinkarm_exp1_config(exp_cfg):
+	exp_cfg.samples_per_iteration = 5
+	exp_cfg.num_iterations = 30
+
 
 def config(env_name, controller_type, exp_id):
 	exp_cfg = DotMap()
@@ -118,6 +145,8 @@ def config(env_name, controller_type, exp_id):
 		cartpole_exp1_config(exp_cfg)
 	elif exp_id == 'r1':
 		reacher_exp1_config(exp_cfg)
+	elif exp_id == 'n1':
+		nlinkarm_exp1_config(exp_cfg)
 	else:
 		raise Exception("Unknown Experiment ID.")
 
@@ -127,6 +156,9 @@ def config(env_name, controller_type, exp_id):
 		env = cartpole_config(exp_cfg)
 	elif env_name == 'reacher':
 		env = reacher_config(exp_cfg)
+	elif env_name == 'nlinkarm':
+		env = nlinkarm_config(exp_cfg)
+		exp_cfg.goal_schedule = NoSwitchSchedule(None, env.goal_state) # Here since this needs env
 	else:
 		raise Exception("Unsupported environment.")
 
@@ -147,11 +179,11 @@ if __name__ == '__main__':
 	# multiprocessing.set_start_method('spawn')
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-env_name', type=str, default="pointbot",
-						help='Environment name: select from [pointbot, cartpole, reacher]')
+						help='Environment name: select from [pointbot, cartpole, reacher, nlinkarm]')
 	parser.add_argument('-ctrl', type=str, default="random",
 						help='Controller name: select from [random, lmpc_expect]')
 	parser.add_argument('-exp_id', type=str, default="p1",
-						help='Experiment ID: select from [p1, p2, c1]')
+						help='Experiment ID: select from [p1, p2, c1, n1]')
 	args = parser.parse_args()
 
 	exp_cfg, env = config(args.env_name, args.ctrl, args.exp_id)

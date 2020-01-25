@@ -130,7 +130,10 @@ class Experiment:
 		while not done:
 			action = self.controller.act(obs)
 			obs, cost, done, _ = self.env.step(action)
-			print(len(data['states']), obs, action, cost)
+			if self.env.name == 'nlinkarm':
+				print(len(data['states']), obs, self.env.forward_kinematics(obs), action, cost)
+			else:
+				print(len(data['states']), obs, action, cost)
 			data['states'].append(obs)
 			data['actions'].append(action)
 			data['costs'].append(cost)

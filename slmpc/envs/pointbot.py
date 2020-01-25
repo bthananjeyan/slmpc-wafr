@@ -54,7 +54,6 @@ class PointBot(Env, utils.EzPickle):
 
 
     def step(self, a, log=False):
-        a = process_action(a)
         next_state = self._next_state(self.state, a)
         cur_cost = self.step_cost(self.state, a)
         self.cost.append(cur_cost)
