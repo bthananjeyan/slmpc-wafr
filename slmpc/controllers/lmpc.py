@@ -208,6 +208,9 @@ class LMPC(Controller):
 				if len(valid_starts) >= int(self.start_state_opt_success_thresh * self.n_samples_start_state_opt):
 					valid = True 
 					valid_start = valid_starts[np.random.randint(len(valid_starts))]
+					# Do not allow a start configuration which is in collision
+					if self.has_obstacles and self.cem_env.collision_check(valid_start):
+						valid = False
 
 				i += 1
 
@@ -475,7 +478,7 @@ class LMPC(Controller):
 
 		if self.has_obstacles:
 			collision_check = np.zeros(self.optimizer_params["popsize"])
-			for i in range(self.optimizer_params["plan_hor"]):
+			for i in range(self.optimizer_params["plan_hor"]+self.optimizer_params["extra_hor"]):
 				collision_check += self.cem_env.collision_check(pred_trajs[:, i])
 
 			collision_check = (collision_check > 0).astype(int)
