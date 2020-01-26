@@ -158,7 +158,7 @@ class NLinkArmEnv(Env, utils.EzPickle):
         self.hist.append(self.state)
         self.done = HORIZON <= self.time
         if not self.cem_env and log:
-            print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
+            print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost, " Constraint: ", self.collision_check(next_state))
 
         return self.state, cur_cost, self.done, {}
 

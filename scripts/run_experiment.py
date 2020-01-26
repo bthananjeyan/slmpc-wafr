@@ -65,7 +65,7 @@ def nlinkarm_config(exp_cfg):
 	exp_cfg.demo_path = "demos/nlinkarm/demos_obstacle.p"
 	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
 	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
-	exp_cfg.variable_start_state = True
+	exp_cfg.variable_start_state = False
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 0.25 # 0.5 works, but trying 0.25 for start state opt

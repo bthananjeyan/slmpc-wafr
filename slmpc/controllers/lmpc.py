@@ -387,7 +387,7 @@ class LMPC(Controller):
 				collision_check += self.cem_env.collision_check(pred_trajs[:, i])
 
 			collision_check = (collision_check > 0).astype(int)
-			start_state_opt_costs +=  collision_check * 1e6
+			costs +=  collision_check * 1e6
 
 		if self.update_SS_and_value_func_CEM:
 			# Update data for safe set and value func
