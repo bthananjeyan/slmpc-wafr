@@ -3,7 +3,7 @@ import numpy as np
 
 N_LINKS = 7
 LINK_LENGTH = 1
-SHOW_ANIMATION = False
+SHOW_ANIMATION = True
 N_ITERATIONS = 10000
 KP = 2
 DT = 0.1
@@ -13,10 +13,14 @@ GOAL_POS = [2, 4]
 # GOAL_STATE = [15 * random() - 15 / 2.0,
 #             15 * random() - 15 / 2.0]
 GOAL_THRESH = 0.5
-
 MAX_FORCE = 0.15
 HORIZON = 50
 HARD_MODE = True
-NOISE_SCALE = 0.
+NOISE_SCALE = 0.03
+
+CHECK_COLLISIONS = True
+# only support circular obstacles for now
+OBSTACLE_CENTER = [4, 5]
+OBSTACLE_RADIUS = 1.5
 
 

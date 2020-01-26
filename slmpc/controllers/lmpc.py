@@ -42,6 +42,18 @@ def get_preds_parallel(all_acs, env_name, state):
 		return [f.result() for f in f_list]
 
 
+# TODO clean this up 
+from slmpc.envs.n_link_arm_env_const import N_LINKS, LINK_LENGTH
+LINK_LENGTHS = np.array([LINK_LENGTH] * N_LINKS)
+
+def forward_kinematics(joint_angles):
+    x = y = 0
+    for i in range(1, N_LINKS + 1):
+        x += LINK_LENGTHS[i - 1] * np.cos(np.sum(joint_angles[:i]))
+        y += LINK_LENGTHS[i - 1] * np.sin(np.sum(joint_angles[:i]))
+    return np.array([x, y]).T
+
+
 class LMPC(Controller):
 
 	def __init__(self, cfg):
@@ -163,12 +175,19 @@ class LMPC(Controller):
 		valid_start = None
 
 		if self.variable_start_state and self.variable_start_state_cost == "towards":
-			print("DESIRED START", desired_start)
+			if self.name == "nlinkarm":
+				print("DESIRED START", desired_start, " DESIRED POS", forward_kinematics(desired_start))
+			else:
+				print("DESIRED START", desired_start)
+
 			# TODO: make this less hacky by just taking normal euclidean distance, including velocities...
 			if self.name == "pointbot":
 				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm( np.array([x[0], x[2]]) - np.array([desired_start[0], desired_start[2]]) ) )
 			elif self.name == 'cartpole':
 				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.abs( x[2] - desired_start[2] ) )
+			elif self.name == 'nlinkarm':
+				# For now use FK here but ideally don't, though not a big deal to use it I guess since assuming knowing dynamics
+				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm( forward_kinematics(x) - forward_kinematics(desired_start) ) )
 			else:
 				raise Exception("Unsupported environment")
 			# sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm(x - desired_start) )
@@ -183,7 +202,11 @@ class LMPC(Controller):
 				else:
 					sampled_start = sorted_all_safe_states[i]
 
-				print("SAMPLED START", sampled_start)
+				if self.name == "nlinkarm":
+					print("SAMPLED START", sampled_start, " SAMPLED POS", forward_kinematics(sampled_start))
+				else:
+					print("SAMPLED START", sampled_start)
+
 				 # TODO: parallelize later if needed
 				valid_starts = []
 				valid_trajs = []
@@ -202,7 +225,11 @@ class LMPC(Controller):
 
 				i += 1
 
-			print("VALID START", valid_start)
+			
+			if self.name == "nlinkarm":
+				print("VALID START", valid_start, " VALID POS", forward_kinematics(valid_start))
+			else:
+				print("VALID START", valid_start)
 
 		return valid_start
 
@@ -282,10 +309,10 @@ class LMPC(Controller):
 			else:
 				costs, rollouts = self._predict_and_eval(obs, samples)
 			costs = costs.reshape(self.optimizer_params["npart"], self.optimizer_params["popsize"]).T.mean(1)
-			print(" CEM Iteration ", i, "Cost: ", np.mean(costs), np.min(costs))
+			# print(" CEM Iteration ", i, "Cost: ", np.mean(costs), np.min(costs))
 			elites = samples[np.argsort(costs)][:self.optimizer_params["num_elites"]]
 			min_costs = np.sort(costs)[:self.optimizer_params["num_elites"]]
-			print("MAX MIN COST: ", np.max(min_costs))
+			# print("MAX MIN COST: ", np.max(min_costs))
 
 			new_mean = np.mean(elites, axis=0)
 			new_var = np.var(elites, axis=0)
@@ -433,6 +460,9 @@ class LMPC(Controller):
 				elif self.name == "cartpole":
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [2]] - np.array([desired_start[2]]) )**2, axis=1)
 					# start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] - np.array([desired_start[1, 3]]) )**2, axis=1) # TODO: add only if needed
+				elif self.name == "nlinkarm": # define costs in terms of FK to desired start pos
+					# TODO: vectorixe this call to forward_kinematics
+					start_state_opt_costs += np.sum(( np.array(  [forward_kinematics(x) for x in pred_trajs[:, i]]   ) - forward_kinematics(desired_start) )**2, axis=1)
 				else:
 					start_state_opt_costs += np.sum((pred_trajs[:, i] - desired_start)**2, axis=1)
 		else:
