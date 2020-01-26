@@ -82,7 +82,7 @@ class Experiment:
 		self.samples_per_iteration = self.exp_cfg.samples_per_iteration
 		self.num_iterations = self.exp_cfg.num_iterations
 		self.parallelize_rollouts = exp_cfg.parallelize_rollouts
-
+		self.has_obstacles = exp_cfg.has_obstacles
 		self.goal_schedule = exp_cfg.goal_schedule
 		self.desired_starts = exp_cfg.desired_starts
 		self.variable_start_state_cost = exp_cfg.variable_start_state_cost
@@ -127,16 +127,19 @@ class Experiment:
 
 		data['states'].append(obs)
 		done = False
+		data['collision'] = False 
 		while not done:
 			action = self.controller.act(obs)
 			obs, cost, done, _ = self.env.step(action)
 			if self.env.name == 'nlinkarm':
-				print(len(data['states']), obs, self.env.forward_kinematics(obs), action, cost)
+				print(len(data['states']), obs, self.env.forward_kinematics(obs), self.collision_check(obs), action, cost)
 			else:
 				print(len(data['states']), obs, action, cost)
 			data['states'].append(obs)
 			data['actions'].append(action)
 			data['costs'].append(cost)
+			if self.has_obstacles and self.collision_check(obs):
+				data['collision'] = True
 		data['total_cost'] = np.sum(data['costs'])
 		data['values'] = np.cumsum(data['costs'][::-1])[::-1]
 		data['successful'] = int(data['costs'][-1]) == 0
@@ -158,7 +161,8 @@ class Experiment:
 					'costs': demo_full_data[i]["costs"],
 					'total_cost': demo_full_data[i]["cost_sum"],
 					'values' : demo_full_data[i]["values"],
-					'successful': True}
+					'successful': True,
+					'collision': False}
 				demo_samples.append(demo_data)
 
 		self.all_samples.append(demo_samples)

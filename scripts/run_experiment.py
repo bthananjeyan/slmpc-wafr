@@ -33,6 +33,7 @@ def pointbot_config(exp_cfg):
 	exp_cfg.desired_starts = [[-50, 0, 25, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
 	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
+	exp_cfg.has_obstacles = False
 	return PointBot()
 
 def cartpole_config(exp_cfg):
@@ -56,11 +57,12 @@ def cartpole_config(exp_cfg):
 		exp_cfg.desired_starts.append( [0.0, 0., max(np.pi/2 - float(i) * np.pi/32, np.pi/4), 0.] )
 	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
+	exp_cfg.has_obstacles = False
 	return CartPole()
 
 def nlinkarm_config(exp_cfg):
 	exp_cfg.save_dir = "logs/nlinkarm"
-	exp_cfg.demo_path = "demos/nlinkarm/demos.p"
+	exp_cfg.demo_path = "demos/nlinkarm/demos_obstacle.p"
 	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
 	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
 	exp_cfg.variable_start_state = True
@@ -78,10 +80,11 @@ def nlinkarm_config(exp_cfg):
 	exp_cfg.desired_starts = [np.array([0.5] * N_LINKS) for _ in range(exp_cfg.num_iterations)] # Placeholder for now
 	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
+	exp_cfg.has_obstacles = True
 	return NLinkArmEnv()
 
 
-# TODO: make sure to remove the goal from the observation for reacher lol
+# TODO: make sure to remove the goal from the observation for reacher lol, deprecated right now
 def reacher_config(exp_cfg):
 	exp_cfg.save_dir = "logs/reacher"
 	exp_cfg.demo_path = "demos/reacher/logs.mat"
@@ -101,6 +104,7 @@ def reacher_config(exp_cfg):
 	exp_cfg.desired_starts = [[-100, 0, 0, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
 	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
+	exp_cfg.has_obstacles = False
 	return gym.make('ReacherSparse-v0')
 
 
@@ -130,7 +134,7 @@ def reacher_exp1_config(exp_cfg):
 def nlinkarm_exp1_config(exp_cfg):
 	exp_cfg.samples_per_iteration = 5
 	exp_cfg.num_iterations = 30
-	# TODO: goal schedule
+	# Goal schedule defined later in file since goal_state is computed in the __init__, TODO: Brijen should think about this more
 
 
 def config(env_name, controller_type, exp_id):

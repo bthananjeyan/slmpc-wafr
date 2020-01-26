@@ -41,19 +41,6 @@ def get_preds_parallel(all_acs, env_name, state):
 		f_list = [executor.submit(get_preds, all_acs[p1], env_name, state) for p1 in range(all_acs.shape[0])]
 		return [f.result() for f in f_list]
 
-
-# TODO clean this up 
-from slmpc.envs.n_link_arm_env_const import N_LINKS, LINK_LENGTH
-LINK_LENGTHS = np.array([LINK_LENGTH] * N_LINKS)
-
-def forward_kinematics(joint_angles):
-    x = y = 0
-    for i in range(1, N_LINKS + 1):
-        x += LINK_LENGTHS[i - 1] * np.cos(np.sum(joint_angles[:i]))
-        y += LINK_LENGTHS[i - 1] * np.sin(np.sum(joint_angles[:i]))
-    return np.array([x, y]).T
-
-
 class LMPC(Controller):
 
 	def __init__(self, cfg):
@@ -72,7 +59,7 @@ class LMPC(Controller):
 		self.ss_value_train_success_thresh = cfg.ss_value_train_success_thresh
 		self.update_SS_and_value_func_CEM = cfg.update_SS_and_value_func_CEM
 		self.max_update_SS_value = cfg.max_update_SS_value
-
+		self.has_obstacles = cfg.has_obstacles
 		self.model_logdir = osp.join(cfg.save_dir, cfg.model_logdir)
 
 		if not os.path.exists(self.model_logdir):
@@ -176,7 +163,7 @@ class LMPC(Controller):
 
 		if self.variable_start_state and self.variable_start_state_cost == "towards":
 			if self.name == "nlinkarm":
-				print("DESIRED START", desired_start, " DESIRED POS", forward_kinematics(desired_start))
+				print("DESIRED START", desired_start, " DESIRED POS", self.cem_env.forward_kinematics(desired_start))
 			else:
 				print("DESIRED START", desired_start)
 
@@ -186,8 +173,7 @@ class LMPC(Controller):
 			elif self.name == 'cartpole':
 				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.abs( x[2] - desired_start[2] ) )
 			elif self.name == 'nlinkarm':
-				# For now use FK here but ideally don't, though not a big deal to use it I guess since assuming knowing dynamics
-				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm( forward_kinematics(x) - forward_kinematics(desired_start) ) )
+				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm( self.cem_env.forward_kinematics(x) - self.cem_env.forward_kinematics(desired_start) ) )
 			else:
 				raise Exception("Unsupported environment")
 			# sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm(x - desired_start) )
@@ -203,7 +189,7 @@ class LMPC(Controller):
 					sampled_start = sorted_all_safe_states[i]
 
 				if self.name == "nlinkarm":
-					print("SAMPLED START", sampled_start, " SAMPLED POS", forward_kinematics(sampled_start))
+					print("SAMPLED START", sampled_start, " SAMPLED POS", self.cem_env.forward_kinematics(sampled_start))
 				else:
 					print("SAMPLED START", sampled_start)
 
@@ -227,7 +213,7 @@ class LMPC(Controller):
 
 			
 			if self.name == "nlinkarm":
-				print("VALID START", valid_start, " VALID POS", forward_kinematics(valid_start))
+				print("VALID START", valid_start, " VALID POS", self.cem_env.forward_kinematics(valid_start))
 			else:
 				print("VALID START", valid_start)
 
@@ -395,6 +381,14 @@ class LMPC(Controller):
 		costs += traj_value
 		costs += safety_check * 1e6
 
+		if self.has_obstacles:
+			collision_check = np.zeros(self.optimizer_params["popsize"])
+			for i in range(self.optimizer_params["plan_hor"]):
+				collision_check += self.cem_env.collision_check(pred_trajs[:, i])
+
+			collision_check = (collision_check > 0).astype(int)
+			start_state_opt_costs +=  collision_check * 1e6
+
 		if self.update_SS_and_value_func_CEM:
 			# Update data for safe set and value func
 			success_percentage =  (len(safety_check) - np.sum(safety_check))/len(safety_check) 
@@ -462,7 +456,7 @@ class LMPC(Controller):
 					# start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] - np.array([desired_start[1, 3]]) )**2, axis=1) # TODO: add only if needed
 				elif self.name == "nlinkarm": # define costs in terms of FK to desired start pos
 					# TODO: vectorixe this call to forward_kinematics
-					start_state_opt_costs += np.sum(( np.array(  [forward_kinematics(x) for x in pred_trajs[:, i]]   ) - forward_kinematics(desired_start) )**2, axis=1)
+					start_state_opt_costs += np.sum((self.cem_env.forward_kinematics(pred_trajs[:, i]) - self.cem_env.forward_kinematics(desired_start) )**2, axis=1)
 				else:
 					start_state_opt_costs += np.sum((pred_trajs[:, i] - desired_start)**2, axis=1)
 		else:
@@ -476,7 +470,16 @@ class LMPC(Controller):
 		start_state_opt_costs = start_state_opt_costs.flatten()
 		safety_check = self.unsafe(pred_trajs[:, -1], self.ss_approx_model)
 		safety_check = safety_check.flatten()
+
 		start_state_opt_costs += safety_check * 1e6
+
+		if self.has_obstacles:
+			collision_check = np.zeros(self.optimizer_params["popsize"])
+			for i in range(self.optimizer_params["plan_hor"]):
+				collision_check += self.cem_env.collision_check(pred_trajs[:, i])
+
+			collision_check = (collision_check > 0).astype(int)
+			start_state_opt_costs +=  collision_check * 1e6
 
 		# Update data for safe set and value func
 		if self.update_SS_and_value_func_CEM:

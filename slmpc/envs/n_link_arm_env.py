@@ -41,7 +41,6 @@ class NLinkArmEnv(Env, utils.EzPickle):
         self.show_animation = SHOW_ANIMATION
 
         self.n_links = len(self.link_lengths)
-
         self.lim = sum(self.link_lengths)
         self.goal_pos = GOAL_POS
         self.goal_state, solution_found = self.inverse_kinematics(self.start_state)
@@ -49,30 +48,46 @@ class NLinkArmEnv(Env, utils.EzPickle):
         if not solution_found:
             raise Exception("Invalid goal position")
 
-        if show_animation:  # pragma: no cover
+        if self.show_animation:  # pragma: no cover
             self.fig = plt.figure()
 
             plt.ion()
             plt.show()
 
-    # TODO: Vectorize this
     def get_points(self, state):
-        points = [[0, 0] for _ in range(self.n_links + 1)]
-        for i in range(1, self.n_links + 1):
-            points[i][0] = points[i - 1][0] + \
-                self.link_lengths[i - 1] * \
-                np.cos(np.sum(state[:i]))
-            points[i][1] = points[i - 1][1] + \
-                self.link_lengths[i - 1] * \
-                np.sin(np.sum(state[:i]))
+        if len(state.shape) == 2:
+            points = np.zeros((len(state), self.n_links+1, 2))
+            for i in range(1, self.n_links + 1):
+                points[:, i, 0] = points[:, i - 1, 0] + \
+                    self.link_lengths[i - 1] * \
+                    np.cos(np.sum(state[:, :i], axis=1))
+                points[:, i, 1] = points[:, i - 1, 1] + \
+                    self.link_lengths[i - 1] * \
+                    np.sin(np.sum(state[:, :i], axis=1))
+        else:
+            points = np.zeros((self.n_links+1, 2))
+            for i in range(1, self.n_links + 1):
+                points[i][0] = points[i - 1][0] + \
+                    self.link_lengths[i - 1] * \
+                    np.cos(np.sum(state[:i]))
+                points[i][1] = points[i - 1][1] + \
+                    self.link_lengths[i - 1] * \
+                    np.sin(np.sum(state[:i]))
 
-        if show_animation:
-            self.plot()
+            self.points = points
+            self.end_effector = np.array(self.points[self.n_links]).T
+
+            if self.show_animation:  # pragma: no cover
+                self.plot()
 
         return points
 
     def plot(self):  # pragma: no cover
+        goal = np.array(GOAL_POS).T
         plt.cla()
+        circle1 = plt.Circle(OBSTACLE_CENTER, OBSTACLE_RADIUS, color='r')
+        fig, ax = plt.subplots()
+        ax.add_artist(circle1)
         # for stopping simulation with the esc key.
         plt.gcf().canvas.mpl_connect('key_release_event',
                 lambda event: [exit(0) if event.key == 'escape' else None])
@@ -83,10 +98,11 @@ class NLinkArmEnv(Env, utils.EzPickle):
                          [self.points[i][1], self.points[i + 1][1]], 'r-')
             plt.plot(self.points[i][0], self.points[i][1], 'ko')
 
-        plt.plot(self.goal[0], self.goal[1], 'gx')
+        plt.plot(goal[0], goal[1], 'gx')
+        plt.plot()
 
-        plt.plot([self.end_effector[0], self.goal[0]], [
-                 self.end_effector[1], self.goal[1]], 'g--')
+        plt.plot([self.end_effector[0], goal[0]], [
+                 self.end_effector[1], goal[1]], 'g--')
 
         plt.xlim([-self.lim, self.lim])
         plt.ylim([-self.lim, self.lim])
@@ -94,25 +110,43 @@ class NLinkArmEnv(Env, utils.EzPickle):
         plt.pause(0.0001)
 
 
-    # Make this vectorizable
     def collision_check(self, state):
-        if not CHECK_COLLISIONS:
-            return 0
-        # Get points on arm
-        self.points = self.get_points(state)
-        arm_line_seg_list = np.array([ [self.points[i], self.points[j]] for i, j in zip(  range(len(self.points)-1), range(1, len(self.points))) ])
-        print("ARM LINE SEG LIST", arm_line_seg_list)
-        for line_seg in arm_line_seg_list:
-            s1, s2 = line_seg
-            t_hat = ((OBSTACLE_CENTER - s1).dot(s2 - s1))/( (s2-s1).dot(s2-s1) )
-            t = min(max(t_hat, 0), 1)
-            dist = np.linalg.norm(s1 + t*(s1 - s1) - OBSTACLE_CENTER)
-            if dist <= OBSTACLE_RADIUS: 
-                print("colliding", line_seg)
-                print(dist)
-                return 1
+        if len(state.shape) == 2:
+            if not CHECK_COLLISIONS:
+                return np.zeros(len(state))
+            else:
+                points = self.get_points(state)
+                arm_line_seg_list = np.apply_along_axis(lambda points: np.array([ [points[i], points[j]] for i, j in zip(  range(len(points)-1), range(1, len(points))) ]), 1, points)
+                t_hats_num = (OBSTACLE_CENTER - arm_line_seg_list[:, :, 0])
+                t_hats_val = arm_line_seg_list[:, :, 1] - arm_line_seg_list[:, :, 0]
+                t_hats_num = np.sum(t_hats_num*t_hats_val, axis=-1)
+                t_hats_denom = np.sum(t_hats_val*t_hats_val, axis=-1)
+                t = t_hats_num/t_hats_denom
+                t[t < 0] = 0
+                t[t > 1] = 1
+                t_reshaped = np.repeat(t, 2, axis=1)
+                t_reshaped = t_reshaped.reshape(arm_line_seg_list[:, :, 0].shape)
+                dist = np.linalg.norm(arm_line_seg_list[:, :, 0] +  t_reshaped * (arm_line_seg_list[:, :, 1] - arm_line_seg_list[:, :, 0]) - OBSTACLE_CENTER, axis=-1)
+                min_dists = np.min(dist, axis=1)
+                return (min_dists <= OBSTACLE_RADIUS).astype(int)
+        else:
+            if not CHECK_COLLISIONS:
+                return 0
+            # Get points on arm
+            points = self.get_points(state)
+            arm_line_seg_list = np.array([ [points[i], points[j]] for i, j in zip(  range(len(points)-1), range(1, len(points))) ])
 
-        return 0
+            for line_seg in arm_line_seg_list:
+                s1, s2 = line_seg
+                t_hat = ((OBSTACLE_CENTER - s1).dot(s2 - s1))/( (s2-s1).dot(s2-s1) )
+                t = min(max(t_hat, 0), 1)
+                dist = np.linalg.norm(s1 + t*(s2 - s1) - OBSTACLE_CENTER)
+                if dist <= OBSTACLE_RADIUS: 
+                    print("colliding", line_seg)
+                    print(dist)
+                    return 1
+
+            return 0
 
     def step(self, a, log=False):
         a = process_action(a)
@@ -148,7 +182,7 @@ class NLinkArmEnv(Env, utils.EzPickle):
         self.cost = []
         self.done = False
         self.hist = [self.state]
-        self.points = get_points(self.state)
+        self.collision_check(self.state)
         return self.state
 
     def set_state(self, s):
@@ -174,8 +208,7 @@ class NLinkArmEnv(Env, utils.EzPickle):
     def step_cost(self, s, a):
         if HARD_MODE:
             if len(s.shape) == 2:
-                curr_positions = np.array([self.forward_kinematics(state) for state in s])
-                return (np.linalg.norm(np.subtract(self.goal_pos, curr_positions), axis=1) > GOAL_THRESH).astype(float)
+                return (np.linalg.norm(np.subtract(self.goal_pos, self.forward_kinematics(s)), axis=1) > GOAL_THRESH).astype(float)
             else:
                 return (np.linalg.norm(np.subtract(self.goal_pos, self.forward_kinematics(s))) > GOAL_THRESH).astype(float)
         return np.linalg.norm(np.subtract(self.goal_pos, self.forward_kinematics(s)))
@@ -203,6 +236,7 @@ class NLinkArmEnv(Env, utils.EzPickle):
         """
         if goal_pos is None:
             goal_pos = self.goal_pos 
+
         new_state = s
         for iteration in range(N_ITERATIONS):
             errors, distance = self.pos_distance(self.forward_kinematics(new_state), goal_pos)
@@ -213,14 +247,21 @@ class NLinkArmEnv(Env, utils.EzPickle):
             new_state = new_state + np.matmul(J, errors)
         return new_state, False
 
-    # TODO: Vectorize this for step_cost
-    def forward_kinematics(self, joint_angles):
-        x = y = 0
-        for i in range(1, N_LINKS + 1):
-            x += self.link_lengths[i - 1] * np.cos(np.sum(joint_angles[:i]))
-            y += self.link_lengths[i - 1] * np.sin(np.sum(joint_angles[:i]))
-        return np.array([x, y]).T
 
+    def forward_kinematics(self, joint_angles):
+        if len(joint_angles.shape) == 2:
+            x = np.zeros(len(joint_angles))
+            y = np.zeros(len(joint_angles))
+            for i in range(1, N_LINKS + 1):
+                x += self.link_lengths[i - 1] * np.cos(np.sum(joint_angles[:, :i], axis=1))
+                y += self.link_lengths[i - 1] * np.sin(np.sum(joint_angles[:, :i], axis=1))
+            return np.array([x, y]).T
+        else:
+            x = y = 0
+            for i in range(1, N_LINKS + 1):
+                x += self.link_lengths[i - 1] * np.cos(np.sum(joint_angles[:i]))
+                y += self.link_lengths[i - 1] * np.sin(np.sum(joint_angles[:i]))
+            return np.array([x, y]).T
 
     def jacobian_inverse(self, joint_angles):
         J = np.zeros((2, N_LINKS))
@@ -248,7 +289,7 @@ class NLinkArmEnvTeacher(object):
     def __init__(self):
         self.env = NLinkArmEnv()
         self.outdir = "demos/nlinkarm"
-        self.waypoints = [[2, -3], GOAL_POS]
+        self.waypoints = [[2, 4], GOAL_POS]
 
     def get_rollout(self, start_state=None):
         print("START STATE", start_state)
@@ -260,15 +301,20 @@ class NLinkArmEnvTeacher(object):
         else:
             O, A, cost_sum, costs = [obs], [], 0, []
 
-        noise_std = 0.02
+        noise_std = 0
 
         waypoint_idx = 0
+        last_waypoint_idx = 0
+        waypoint_joints, solution_found = self.env.inverse_kinematics(obs, goal_pos=self.waypoints[waypoint_idx])
 
         for i in range(HORIZON):
             noise_idx = np.random.randint(int(HORIZON * 2 / 3))
 
             # Calculate waypoint in joint space based on current joint configuration and waypoint in position space
-            waypoint_joints, solution_found = self.env.inverse_kinematics(obs, self.waypoints[waypoint_idx])
+            # print("HUGE", self.waypoints[waypoint_idx])
+            if last_waypoint_idx != waypoint_idx:
+                waypoint_joints, solution_found = self.env.inverse_kinematics(obs, goal_pos=self.waypoints[waypoint_idx])
+            # self.env.set_goal_state(waypoint_joints)
 
             if not CHECK_COLLISIONS: 
                 action = process_action(KP * ang_diff(self.env.goal_state, obs) * DT)
@@ -278,11 +324,12 @@ class NLinkArmEnvTeacher(object):
 
             # Go to next waypoint if reached closed enough
             errors, distance = self.env.pos_distance(  self.env.forward_kinematics(obs), self.waypoints[waypoint_idx] ) 
-            if distance < 0.5 and waypoint_idx < len(self.waypoints) - 1:
+            if distance < 0.1 and waypoint_idx < len(self.waypoints) - 1:
+                last_waypoint_idx = waypoint_idx
                 waypoint_idx += 1
 
-            if i < HORIZON / 2:
-                action = np.array([0.01*np.random.random()] * N_LINKS)
+            # if i < HORIZON / 2:
+            #     action = np.array([0.01*np.random.random()] * N_LINKS)
 
             if i < noise_idx:
                 action = process_action((np.array(action) +  np.random.normal(0, noise_std, self.env.action_space.shape[0])).tolist())
@@ -293,9 +340,8 @@ class NLinkArmEnvTeacher(object):
             obs, cost, done, info = self.env.step(action)
 
             collision = env.collision_check(obs)
-            print("COLLISION", collision)
             if collision:
-                assert(False)
+                print("COLLIDED")
                 return self.get_rollout()
 
             O.append(obs)
@@ -313,7 +359,7 @@ class NLinkArmEnvTeacher(object):
             return self.get_rollout()
 
         print("COSTS", costs)
-        print("POS", [self.env.forward_kinematics(obs) for obs in O])
+        # print("POS", [self.env.forward_kinematics(obs) for obs in O])
 
         return {
             "obs": O,
@@ -326,12 +372,14 @@ class NLinkArmEnvTeacher(object):
 
     def save_demos(self, num_demos):
         rollouts = [teacher.get_rollout() for i in range(num_demos)]
-        pickle.dump(rollouts, open( osp.join(self.outdir, "demos_fake.p"), "wb" ) )
+        pickle.dump(rollouts, open( osp.join(self.outdir, "demos_obstacle.p"), "wb" ) )
 
 if __name__=="__main__":
     env = NLinkArmEnv()
+    # print("RESULT", env.test(np.array([2.31688672, -2.30731941]), np.array([3.04305522, -2.99483618])))
+    # assert(False)
     teacher = env.teacher()
-    teacher.save_demos(1)
+    teacher.save_demos(100)
     print("FINSHED")
 
     
