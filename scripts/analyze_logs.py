@@ -3,9 +3,9 @@ import pickle
 import numpy as np
 
 if __name__ == "__main__":
-	folder_name = "2020-01-24--10:07:17"
+	# folder_name = "2020-01-24--10:07:17"
 	# folder_name = "2020-01-24--10:06:50"
-	# folder_name = "2020-01-24--13:13:40"
+	folder_name = "2020-01-24--13:13:40"
 	data_folder = os.path.join("logs/pointbot", folder_name)
 
 	data = pickle.load( open( os.path.join(data_folder, "samples.pkl"), "rb" ) )

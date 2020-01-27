@@ -333,7 +333,7 @@ class NLinkArmEnvTeacher(object):
                 last_waypoint_idx = waypoint_idx
                 waypoint_idx += 1
 
-            if not CHECK_COLLISIONS and i < HORIZON / 2:
+            if not CHECK_COLLISIONS and i < HORIZON / 5:
                 action = np.array([0.01*np.random.random()] * N_LINKS)
 
             if i < noise_idx:
@@ -377,7 +377,7 @@ class NLinkArmEnvTeacher(object):
 
     def save_demos(self, num_demos):
         rollouts = [teacher.get_rollout() for i in range(num_demos)]
-        pickle.dump(rollouts, open( osp.join(self.outdir, "demos_obstacle.p"), "wb" ) )
+        pickle.dump(rollouts, open( osp.join(self.outdir, "demos.p"), "wb" ) )
 
 if __name__=="__main__":
     env = NLinkArmEnv()
