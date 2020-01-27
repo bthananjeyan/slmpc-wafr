@@ -51,6 +51,8 @@ class PointBot(Env, utils.EzPickle):
         self.name = "pointbot"
         self.env_name = 'PointBot-v0'
         self.cem_env = cem_env
+        self.obstacle = OBSTACLE
+        self.has_obstacle = HAS_OBSTACLE
 
 
     def step(self, a, log=False):
@@ -87,6 +89,16 @@ class PointBot(Env, utils.EzPickle):
         self.hist = [self.state]
         return self.state
 
+    def collision_check(self, state):
+        if len(state.shape) == 1:
+            state = state[np.newaxis,...]
+        if not self.has_obstacle:
+            return np.zeros(len(state))
+        else:
+            below = np.max(np.array(self.obstacle[0]) > state, axis=1)
+            above = np.max(state > np.array(self.obstacle[1]), axis=1)
+            return np.logical_and(1-below, 1-above)
+
     def set_state(self, s):
         self.state = s
 
@@ -104,7 +116,9 @@ class PointBot(Env, utils.EzPickle):
         return euclidean_goal_fn(self.goal_state, GOAL_THRESH)
 
     def _next_state(self, s, a):
-        return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * truncnorm.rvs(-1, 1, size=s.shape)
+        collisions = self.collision_check(s.T)
+        next_state = self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * truncnorm.rvs(-1, 1, size=s.shape)
+        return np.where(collisions, s, next_state)
 
     def step_cost(self, s, a):
         if HARD_MODE:
@@ -174,6 +188,7 @@ class PointBotTeacher(object):
         values = np.cumsum(costs[::-1])[::-1]
         if self.env.is_stable(obs):
             stabilizable_obs = O
+            print(O)
         else:
             stabilizable_obs = []
             return self.get_rollout()
@@ -195,7 +210,7 @@ class PointBotTeacher(object):
         down_start_state = [START_STATE[0], START_STATE[1], START_STATE[2], START_STATE[3]]
         start_states = [START_STATE + np.random.randn(4) for _ in range(50)] + [up_start_state + np.random.randn(4) for _ in range(25)] + [down_start_state + np.random.randn(4) for _ in range(25)]
         rollouts = [teacher.get_rollout(start_states[i]) for i in range(num_demos)]
-        pickle.dump(rollouts, open( osp.join(self.outdir, "demos.p"), "wb" ) )
+        pickle.dump(rollouts, open( osp.join(self.outdir, "demos3.p"), "wb" ) )
 
     def _get_gain(self, t):
         return self.Ks[t]
