@@ -17,7 +17,7 @@ HORIZON = 50
 HARD_MODE = True
 NOISE_SCALE = 0.03
 
-CHECK_COLLISIONS = False
+CHECK_COLLISIONS = True
 # # only support circular obstacles for now
 OBSTACLE_CENTER = [5.5, -2]
 OBSTACLE_RADIUS = 1

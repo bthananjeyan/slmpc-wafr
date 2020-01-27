@@ -16,21 +16,21 @@ import gym
 
 def pointbot_config(exp_cfg):
 	exp_cfg.save_dir = "logs/pointbot"
-	exp_cfg.demo_path = "demos/pointbot/demos3.p"
+	exp_cfg.demo_path = "demos/pointbot/demos.p"
 	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
 	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
-	exp_cfg.variable_start_state = False
+	exp_cfg.variable_start_state = True
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 2
 	exp_cfg.parallelize_cem = False
-	exp_cfg.parallelize_rollouts = False
+	exp_cfg.parallelize_rollouts = True
 	exp_cfg.model_logdir = 'model_logs'
 	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 400, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": -5} # These kind of work for pointbot?
 	exp_cfg.n_samples_start_state_opt = 5
 	exp_cfg.start_state_opt_success_thresh = 0.6
 	exp_cfg.ss_value_train_success_thresh = 0.7
-	exp_cfg.desired_starts = [[-80, 0, 10, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
+	exp_cfg.desired_starts = [[-100, 0, 50, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
 	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
 	from slmpc.envs.pointbot_const import HAS_OBSTACLE
@@ -63,10 +63,10 @@ def cartpole_config(exp_cfg):
 
 def nlinkarm_config(exp_cfg):
 	exp_cfg.save_dir = "logs/nlinkarm"
-	exp_cfg.demo_path = "demos/nlinkarm/demos.p"
+	exp_cfg.demo_path = "demos/nlinkarm/demos_obstacle.p"
 	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
 	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
-	exp_cfg.variable_start_state = False
+	exp_cfg.variable_start_state = True
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 0.25 # Use 0.25 with constraints, 0.5 without
@@ -82,7 +82,8 @@ def nlinkarm_config(exp_cfg):
 	exp_cfg.desired_starts = [np.array([0.3] * N_LINKS) for _ in range(exp_cfg.num_iterations)] # Placeholder for now
 	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
-	exp_cfg.has_obstacles = True
+	from slmpc.envs.n_link_arm_env_const import CHECK_COLLISIONS
+	exp_cfg.has_obstacles = CHECK_COLLISIONS
 	return NLinkArmEnv()
 
 
