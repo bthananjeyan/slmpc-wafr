@@ -22,9 +22,9 @@ def pointbot_config(exp_cfg):
 	exp_cfg.variable_start_state = False
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
-	exp_cfg.alpha_thresh = 3
+	exp_cfg.alpha_thresh = 2
 	exp_cfg.parallelize_cem = False
-	exp_cfg.parallelize_rollouts = True
+	exp_cfg.parallelize_rollouts = False
 	exp_cfg.model_logdir = 'model_logs'
 	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 400, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": -5} # These kind of work for pointbot?
 	exp_cfg.n_samples_start_state_opt = 5
@@ -33,7 +33,8 @@ def pointbot_config(exp_cfg):
 	exp_cfg.desired_starts = [[-50, 0, 25, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
 	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
-	exp_cfg.has_obstacles = False
+	from slmpc.envs.pointbot_const import HAS_OBSTACLE
+	exp_cfg.has_obstacles = HAS_OBSTACLE
 	return PointBot()
 
 def cartpole_config(exp_cfg):

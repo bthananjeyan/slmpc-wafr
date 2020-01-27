@@ -169,8 +169,10 @@ class PointBotTeacher(object):
         noise_std = 0.2
         for i in range(HORIZON):
             noise_idx = np.random.randint(int(HORIZON * 2 / 3))
-            if i < HORIZON / 2:
-                action = [0.1, 0.1]
+            if i < HORIZON / 3:
+                action = [0.2, 0.15]
+            elif i < 2 * HORIZON / 3:
+                action = [0.2, 0.]
             else:
                 action = self._expert_control(obs, i)
             if i < noise_idx:
@@ -188,7 +190,6 @@ class PointBotTeacher(object):
         values = np.cumsum(costs[::-1])[::-1]
         if self.env.is_stable(obs):
             stabilizable_obs = O
-            print(O)
         else:
             stabilizable_obs = []
             return self.get_rollout()
