@@ -68,16 +68,16 @@ def nlinkarm_config(exp_cfg):
 	exp_cfg.variable_start_state = True
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
-	exp_cfg.alpha_thresh = 0.5 # 0.5 works, but trying 0.25 for start state opt
+	exp_cfg.alpha_thresh = 0.25 # Use 0.25 with constraints, 0.5 without
 	exp_cfg.parallelize_cem = False
 	exp_cfg.parallelize_rollouts = True
 	exp_cfg.model_logdir = 'model_logs'
-	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": -5} # These kind of work for pointbot?
+	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": -5}
 	exp_cfg.n_samples_start_state_opt = 5
 	exp_cfg.start_state_opt_success_thresh = 0.6
 	exp_cfg.ss_value_train_success_thresh = 0.7
 	from slmpc.envs.n_link_arm_env_const import N_LINKS
-	exp_cfg.desired_starts = [np.array([0.5] * N_LINKS) for _ in range(exp_cfg.num_iterations)] # Placeholder for now
+	exp_cfg.desired_starts = [np.array([0.3] * N_LINKS) for _ in range(exp_cfg.num_iterations)] # Placeholder for now
 	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
 	exp_cfg.has_obstacles = True

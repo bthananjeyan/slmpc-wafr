@@ -113,6 +113,7 @@ class NLinkArmEnv(Env, utils.EzPickle):
     def collision_check(self, state):
         if len(state.shape) == 2:
             if not CHECK_COLLISIONS:
+                points = self.get_points(state)
                 return np.zeros(len(state))
             else:
                 points = self.get_points(state)
@@ -131,6 +132,7 @@ class NLinkArmEnv(Env, utils.EzPickle):
                 return (min_dists <= OBSTACLE_RADIUS).astype(int)
         else:
             if not CHECK_COLLISIONS:
+                points = self.get_points(state)
                 return 0
             # Get points on arm
             points = self.get_points(state)
@@ -289,7 +291,10 @@ class NLinkArmEnvTeacher(object):
     def __init__(self):
         self.env = NLinkArmEnv()
         self.outdir = "demos/nlinkarm"
-        self.waypoints = [[2, 4], GOAL_POS]
+        if CHECK_COLLISIONS:
+            self.waypoints = [[2, 4], GOAL_POS]
+        else:
+            self.waypoints = [GOAL_POS]
 
     def get_rollout(self, start_state=None):
         print("START STATE", start_state)
@@ -328,8 +333,8 @@ class NLinkArmEnvTeacher(object):
                 last_waypoint_idx = waypoint_idx
                 waypoint_idx += 1
 
-            # if i < HORIZON / 2:
-            #     action = np.array([0.01*np.random.random()] * N_LINKS)
+            if not CHECK_COLLISIONS and i < HORIZON / 2:
+                action = np.array([0.01*np.random.random()] * N_LINKS)
 
             if i < noise_idx:
                 action = process_action((np.array(action) +  np.random.normal(0, noise_std, self.env.action_space.shape[0])).tolist())
