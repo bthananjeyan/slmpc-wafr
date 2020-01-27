@@ -15,7 +15,7 @@ from gym import utils
 from gym.spaces import Box
 from scipy.stats import truncnorm
 
-from slmpc.controllers.utils import euclidean_goal_fn
+from slmpc.controllers.utils import euclidean_goal_fn_thresh
 from .pointbot_const import *
 
 def process_action(a):
@@ -53,7 +53,7 @@ class PointBot(Env, utils.EzPickle):
         self.cem_env = cem_env
 
 
-    def step(self, a, log=False):
+    def step(self, a, log=0):
         a = process_action(a)
         next_state = self._next_state(self.state, a)
         cur_cost = self.step_cost(self.state, a)
@@ -63,7 +63,7 @@ class PointBot(Env, utils.EzPickle):
         self.hist.append(self.state)
         self.done = HORIZON <= self.time
         if not self.cem_env and log:
-            print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
+            print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost, self.goal_state)
         return self.state, cur_cost, self.done, {}
 
     def vectorized_step(self, s, a):
@@ -97,11 +97,11 @@ class PointBot(Env, utils.EzPickle):
         return self.cost
 
     def set_goal(self, goal_state):
-        self.goal_state = goal_state
+        self.goal_state = np.array(goal_state)
 
     @property
     def goal_fn(self):
-        return euclidean_goal_fn(self.goal_state, GOAL_THRESH)
+        return euclidean_goal_fn_thresh(self.goal_state, GOAL_THRESH)
 
     def _next_state(self, s, a):
         return self.A.dot(s) + self.B.dot(a) + NOISE_SCALE * truncnorm.rvs(-1, 1, size=s.shape)

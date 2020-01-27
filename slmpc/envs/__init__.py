@@ -7,3 +7,4 @@ register(
 register(
 	id='CartPole-v3',
 	entry_point='slmpc.envs.cartpole:CartPole')
+

@@ -143,7 +143,7 @@ class CartPole(Env, utils.EzPickle):
         a = process_action(a)
         sol = solve_ivp(y_dot_first(a), [self.t, self.t+self.dt], self.state, t_eval=[self.t+self.dt])
         next_state = sol.y[:, -1]
-        # next_state += NOISE_SCALE * truncnorm.rvs(-1, 1, size=len(self.state))
+        next_state += NOISE_SCALE * truncnorm.rvs(-1, 1, size=len(self.state))
         cur_cost = self.step_cost(self.state, a)
         self.cost.append(cur_cost)
         self.state = next_state
@@ -161,7 +161,7 @@ class CartPole(Env, utils.EzPickle):
         trajectories = [state]
         for t in range(a.shape[1]):
             next_state = runge_kutta_vec(y_dot_first_vec(a[:,t].ravel()), state, np.ones(len(a)) * self.dt)
-            # next_state += NOISE_SCALE * truncnorm.rvs(-1, 1, size=next_state.shape)
+            next_state += NOISE_SCALE * truncnorm.rvs(-1, 1, size=next_state.shape)
             trajectories.append(next_state)
             state = next_state
         costs = []
@@ -239,8 +239,8 @@ class CartPoleTeacher(object):
             noise_idx = np.random.randint(int(HORIZON * 3 / 4))
             action = self.env.lqr_u(obs)
 
-            # if i < noise_idx:
-            #     action = (np.array(action) +  np.random.normal(0, noise_std, self.env.action_space.shape[0])).tolist()
+            if i < noise_idx:
+                action = (np.array(action) +  np.random.normal(0, noise_std, self.env.action_space.shape[0])).tolist()
 
             A.append(action)
 

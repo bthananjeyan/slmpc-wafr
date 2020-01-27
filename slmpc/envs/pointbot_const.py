@@ -2,11 +2,15 @@
 Constants associated with the PointBot env.
 """
 
-START_POS = [-25, 0]
+START_POS = [-50, 0]
 END_POS = [0, 0]
+END_POS2 = [-25, 10]
+END_POS3 = [-12, 4]
 START_STATE = [START_POS[0], 0, START_POS[1], 0]
 GOAL_STATE = [END_POS[0], 0, END_POS[1], 0]
-GOAL_THRESH = 1.
+GOAL_STATE2 = [END_POS2[0], 0, END_POS2[1], 0]
+GOAL_STATE3 = [END_POS3[0], 0, END_POS3[1], 0]
+GOAL_THRESH = 7
 
 MAX_FORCE = 1
 HORIZON = 50

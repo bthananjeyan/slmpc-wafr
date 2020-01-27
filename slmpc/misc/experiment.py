@@ -28,6 +28,7 @@ def get_sample(start_state, exp_cfg, goal_state=None):
 	local_controller.restore_controller_state()
 	if goal_state is not None:
 		local_env.set_goal(goal_state)
+		local_controller.cem_env.set_goal(goal_state)
 	obs = local_env.reset()
 
 	if start_state is not None: # multi-start case
@@ -79,6 +80,9 @@ class Experiment:
 			self.controller = LMPC(exp_cfg)
 		else:
 			raise Exception("Unsupported controller.")
+
+		with open(os.path.join(self.save_dir, "config.txt"), "wb") as f:
+			pickle.dump(self.exp_cfg, f)
 
 	def reset(self):
 		self.all_samples = []
@@ -137,10 +141,10 @@ class Experiment:
 
 		self.all_samples.append(demo_samples)
 		self.controller.train(demo_samples)
-		self.controller.save_controller_state()
 		for i in range(self.num_iterations):
 			print("##### Iteration %d #####"%i)
 			self.controller.set_goal(self.goal_schedule(i))
+			self.controller.save_controller_state()
 			self.env.set_goal(self.goal_schedule(i))
 
 			if not self.parallelize_rollouts:
