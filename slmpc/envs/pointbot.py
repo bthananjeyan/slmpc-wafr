@@ -54,6 +54,7 @@ class PointBot(Env, utils.EzPickle):
 
 
     def step(self, a, log=False):
+        a = process_action(a)
         next_state = self._next_state(self.state, a)
         cur_cost = self.step_cost(self.state, a)
         self.cost.append(cur_cost)
@@ -161,6 +162,7 @@ class PointBotTeacher(object):
             if i < noise_idx:
                 action = (np.array(action) +  np.random.normal(0, noise_std, self.env.action_space.shape[0])).tolist()
 
+            action = process_action(action)
             A.append(action)
             obs, cost, done, info = self.env.step(action)
             O.append(obs)
@@ -189,8 +191,8 @@ class PointBotTeacher(object):
         }
 
     def save_demos(self, num_demos):
-        up_start_state = [START_STATE[0], START_STATE[1], START_STATE[2]+20, START_STATE[3]]
-        down_start_state = [START_STATE[0], START_STATE[1], START_STATE[2]-20, START_STATE[3]]
+        up_start_state = [START_STATE[0], START_STATE[1], START_STATE[2], START_STATE[3]]
+        down_start_state = [START_STATE[0], START_STATE[1], START_STATE[2], START_STATE[3]]
         start_states = [START_STATE + np.random.randn(4) for _ in range(50)] + [up_start_state + np.random.randn(4) for _ in range(25)] + [down_start_state + np.random.randn(4) for _ in range(25)]
         rollouts = [teacher.get_rollout(start_states[i]) for i in range(num_demos)]
         pickle.dump(rollouts, open( osp.join(self.outdir, "demos.p"), "wb" ) )
