@@ -83,6 +83,7 @@ class Experiment:
 		self.num_iterations = self.exp_cfg.num_iterations
 		self.parallelize_rollouts = exp_cfg.parallelize_rollouts
 		self.has_obstacles = exp_cfg.has_obstacles
+		self.env.has_obstacles = self.has_obstacles
 		self.goal_schedule = exp_cfg.goal_schedule
 		self.desired_starts = exp_cfg.desired_starts
 		self.variable_start_state_cost = exp_cfg.variable_start_state_cost
@@ -138,7 +139,7 @@ class Experiment:
 			data['states'].append(obs)
 			data['actions'].append(action)
 			data['costs'].append(cost)
-			if self.has_obstacles and self.collision_check(obs):
+			if self.has_obstacles and self.env.collision_check(obs):
 				data['collision'] = True
 		data['total_cost'] = np.sum(data['costs'])
 		data['values'] = np.cumsum(data['costs'][::-1])[::-1]
