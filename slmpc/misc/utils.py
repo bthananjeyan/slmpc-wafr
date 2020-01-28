@@ -20,7 +20,7 @@ class SingleSwitchSchedule(Schedule):
 		self.outputs = outputs
 
 	def __call__(self, t):
-		return self.outputs[int(t < self.switchpoint)]
+		return self.outputs[int(t >= self.switchpoint)]
 
 class NoSwitchSchedule(Schedule):
 	"""

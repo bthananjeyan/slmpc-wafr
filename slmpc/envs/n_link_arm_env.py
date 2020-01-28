@@ -10,7 +10,7 @@ from gym import utils
 from gym.spaces import Box
 from scipy.stats import truncnorm
 
-from slmpc.controllers.utils import euclidean_goal_fn
+from slmpc.controllers.utils import euclidean_goal_fn_thresh
 from .n_link_arm_env_const import *
 import matplotlib.pyplot as plt
 
@@ -202,7 +202,7 @@ class NLinkArmEnv(Env, utils.EzPickle):
 
     @property
     def goal_fn(self):
-        return euclidean_goal_fn(self.goal_pos, GOAL_THRESH)
+        return euclidean_goal_fn_thresh(self.goal_pos, GOAL_THRESH)
 
     def _next_state(self, s, a):
         return s + a + NOISE_SCALE * truncnorm.rvs(-1, 1, size=s.shape)

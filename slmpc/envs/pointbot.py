@@ -15,7 +15,7 @@ from gym import utils
 from gym.spaces import Box
 from scipy.stats import truncnorm
 
-from slmpc.controllers.utils import euclidean_goal_fn
+from slmpc.controllers.utils import euclidean_goal_fn_thresh
 from .pointbot_const import *
 
 def process_action(a):
@@ -53,9 +53,10 @@ class PointBot(Env, utils.EzPickle):
         self.cem_env = cem_env
         self.obstacle = OBSTACLE
         self.has_obstacle = HAS_OBSTACLE
+        self.goal_thresh = GOAL_THRESH
 
 
-    def step(self, a, log=False):
+    def step(self, a, log=0):
         a = process_action(a)
         next_state = self._next_state(self.state, a)
         cur_cost = self.step_cost(self.state, a)
@@ -65,7 +66,7 @@ class PointBot(Env, utils.EzPickle):
         self.hist.append(self.state)
         self.done = HORIZON <= self.time
         if not self.cem_env and log:
-            print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost)
+            print("Timestep: ", self.time, " State: ", self.state, " Cost: ", cur_cost, self.goal_state)
         return self.state, cur_cost, self.done, {}
 
     def vectorized_step(self, s, a):
@@ -109,11 +110,11 @@ class PointBot(Env, utils.EzPickle):
         return self.cost
 
     def set_goal(self, goal_state):
-        self.goal_state = goal_state
+        self.goal_state = np.array(goal_state)
 
     @property
     def goal_fn(self):
-        return euclidean_goal_fn(self.goal_state, GOAL_THRESH)
+        return euclidean_goal_fn_thresh(self.goal_state, self.goal_thresh)
 
     def _next_state(self, s, a):
         collisions = self.collision_check(s.T)
@@ -123,9 +124,9 @@ class PointBot(Env, utils.EzPickle):
     def step_cost(self, s, a):
         if HARD_MODE:
             if len(s.shape) == 2:
-                return (np.linalg.norm(np.subtract(self.goal_state, s), axis=1) > GOAL_THRESH).astype(float)
+                return (np.linalg.norm(np.subtract(self.goal_state, s), axis=1) > self.goal_thresh).astype(float)
             else:
-                return (np.linalg.norm(np.subtract(self.goal_state, s)) > GOAL_THRESH).astype(float)
+                return (np.linalg.norm(np.subtract(self.goal_state, s)) > self.goal_thresh).astype(float)
         return np.linalg.norm(np.subtract(self.goal_state, s))
 
     def values(self):
@@ -143,7 +144,7 @@ class PointBot(Env, utils.EzPickle):
 
     # Returns whether a state is stable or not
     def is_stable(self, s):
-        return np.linalg.norm(np.subtract(self.goal_state, s)) <= GOAL_THRESH
+        return np.linalg.norm(np.subtract(self.goal_state, s)) <= self.goal_thresh
 
     def teacher(self, sess=None):
         return PointBotTeacher()
@@ -211,7 +212,7 @@ class PointBotTeacher(object):
         down_start_state = [START_STATE[0], START_STATE[1], START_STATE[2], START_STATE[3]]
         start_states = [START_STATE + np.random.randn(4) for _ in range(50)] + [up_start_state + np.random.randn(4) for _ in range(25)] + [down_start_state + np.random.randn(4) for _ in range(25)]
         rollouts = [teacher.get_rollout(start_states[i]) for i in range(num_demos)]
-        pickle.dump(rollouts, open( osp.join(self.outdir, "demos3.p"), "wb" ) )
+        pickle.dump(rollouts, open( osp.join(self.outdir, "demos.p"), "wb" ) )
 
     def _get_gain(self, t):
         return self.Ks[t]

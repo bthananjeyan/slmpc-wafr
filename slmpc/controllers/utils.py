@@ -7,10 +7,13 @@ def process_sample_for_goal(sample, goal_fn, indicator_cost=True):
 	if not indicator_cost:
 		raise NotImplementedError
 	goal_reached = goal_fn(sample['states'])
-	last_idx = np.max(np.where(goal_reached))
+	if np.max(goal_reached):
+		last_idx = np.max(np.where(goal_reached))
+	else:
+		return None
 	new_sample = {}
 	new_sample['states'] = sample['states'][:last_idx]
-	new_sample['costs'] = goal_reached[:last_idx]
+	new_sample['costs'] = 1-goal_reached[:last_idx]
 	if "actions" in sample:
 		new_sample['actions'] = sample['actions'][:last_idx]
 
@@ -19,6 +22,6 @@ def process_sample_for_goal(sample, goal_fn, indicator_cost=True):
 
 	return new_sample
 
-def euclidean_goal_fn(center, radius):
-	return lambda x: np.linalg.norm(x - center, axis=1)
+def euclidean_goal_fn_thresh(center, thresh):
+	return lambda x: (np.linalg.norm(x - center, axis=1) < thresh).astype(float)
 

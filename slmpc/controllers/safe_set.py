@@ -4,12 +4,16 @@ from .utils import process_sample_for_goal
 def create_ss_new_goal(ss_old, goal_fn):
 	data = ss_old.get_data()
 	state_data, cost_data = [], []
-	for i in range(len(data[0])):
+	for i in range(len(data)):
 		sample = {
-			'states': data[0][i]
+			'states': data[i]
 		}
 		new_sample = process_sample_for_goal(sample, goal_fn)
+		if new_sample is None:
+			continue
 		state_data.append(new_sample['states'])
+	if len(state_data) == 0:
+		return None
 	return SafeSet(state_data=state_data)
 
 
