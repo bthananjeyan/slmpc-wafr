@@ -15,7 +15,7 @@ import tensorflow as tf
 
 from .controller import Controller
 from .safe_set import SafeSet, create_ss_new_goal
-from .value import ValueFunc
+from .value import ValueFunc, create_value_function_new_goal
 import copy
 
 
@@ -238,18 +238,22 @@ class LMPC(Controller):
 	def set_goal(self, goal_state):
 		if list(self.cem_env.goal_state) == list(goal_state):
 			return
-		assert 0
+		# assert 0, (goal_state, self.cem_env.goal_state)
 		self.cem_env.set_goal(goal_state)
 		goal_fn = self.cem_env.goal_fn
 		new_values = []
 		for value in self.value_funcs:
-			new_values.append(create_value_function_new_goal(value, goal_fn, self.dO))
+			nval = create_value_function_new_goal(value, goal_fn, value.dO)
+			if nval is not None:
+				new_values.append(nval)
 		self.value_funcs = new_values
 		for value in self.value_funcs:
 			value.fit()
 		new_ss = []
 		for ss in self.SS:
-			new_ss.append(create_ss_new_goal(ss, goal_fn))
+			nss = create_ss_new_goal(ss, goal_fn)
+			if nss is not None:
+				new_ss.append(nss)
 		self.SS = new_ss
 		self.value_ss_approx_models =[]
 		for ss in self.SS:
@@ -298,7 +302,7 @@ class LMPC(Controller):
 			else:
 				costs, rollouts = self._predict_and_eval(obs, samples)
 			costs = costs.reshape(self.optimizer_params["npart"], self.optimizer_params["popsize"]).T.mean(1)
-			# print(" CEM Iteration ", i, "Cost: ", np.mean(costs), np.min(costs))
+			# print(" CEM Iteration ", i, "Cost: ", np.mean(costs), np.min(costs), rollouts[np.argmin(costs)], obs, samples[np.argmin(costs)])
 			elites = samples[np.argsort(costs)][:self.optimizer_params["num_elites"]]
 			min_costs = np.sort(costs)[:self.optimizer_params["num_elites"]]
 			# print("MAX MIN COST: ", np.max(min_costs))

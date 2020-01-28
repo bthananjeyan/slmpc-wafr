@@ -29,7 +29,7 @@ def value_pe_constructor(sess, dO, load_model, model_dir):
 	return model
 
 def create_value_function_new_goal(v_old, goal_fn, dO):
-	assert 0
+# def create_value_function_new_goal(v_old, goal_fn):
 	data = v_old.get_data()
 	state_data, value_data, cost_data = [], [], []
 	for i in range(len(data[0])):
@@ -38,9 +38,14 @@ def create_value_function_new_goal(v_old, goal_fn, dO):
 			'costs': data[2][i]
 		}
 		new_sample = process_sample_for_goal(sample, goal_fn)
+		if new_sample is None:
+			continue
 		state_data.append(new_sample['states'])
 		value_data.append(new_sample['values'])
 		cost_data.append(new_sample['costs'])
+	print(len(state_data), [len(s) for s in state_data])
+	if len(state_data) == 0:
+		return None
 	return ValueFunc(v_old.approx_mode, dO, load_model=False, model_dir=None, state_data=state_data, value_data=value_data, cost_data=cost_data)
 
 # TODO: add goal conditioned filter or something
