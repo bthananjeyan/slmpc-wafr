@@ -377,7 +377,7 @@ class NLinkArmEnvTeacher(object):
 
     def save_demos(self, num_demos):
         rollouts = [teacher.get_rollout() for i in range(num_demos)]
-        pickle.dump(rollouts, open( osp.join(self.outdir, "demos.p"), "wb" ) )
+        pickle.dump(rollouts, open( osp.join(self.outdir, "demos_obstacle.p"), "wb" ) )
 
 if __name__=="__main__":
     env = NLinkArmEnv()
