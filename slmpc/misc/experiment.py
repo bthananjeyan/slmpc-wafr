@@ -57,12 +57,20 @@ def get_sample(start_state, exp_cfg, goal_state=None):
 
 	data['states'].append(obs)
 	done = False
+	data['collision'] = False
 	while not done:
 		action = local_controller.act(obs)
 		obs, cost, done, _ = local_env.step(action)
+		# if exp_cfg.has_obstacles:
+		# 	print(len(data['states']), obs, local_env.collision_check(obs), action, cost)
+		# else:
+		# 	print(len(data['states']), obs, action, cost)
 		data['states'].append(obs)
 		data['actions'].append(action)
 		data['costs'].append(cost)
+		if exp_cfg.has_obstacles and local_env.collision_check(obs):
+			print("COLLIDED!")
+			data['collision'] = True
 	data['total_cost'] = np.sum(data['costs'])
 	data['values'] = np.cumsum(data['costs'][::-1])[::-1]
 	data['successful'] = int(data['costs'][-1]) == 0
@@ -136,14 +144,15 @@ class Experiment:
 		while not done:
 			action = self.controller.act(obs)
 			obs, cost, done, _ = self.env.step(action)
-			if self.env.name == 'nlinkarm':
-				print(len(data['states']), obs, self.env.forward_kinematics(obs), self.collision_check(obs), action, cost)
-			else:
-				print(len(data['states']), obs, action, cost)
+			# if self.has_obstacles:
+			# 	print(len(data['states']), obs, self.env.collision_check(obs), action, cost)
+			# else:
+			# 	print(len(data['states']), obs, action, cost)
 			data['states'].append(obs)
 			data['actions'].append(action)
 			data['costs'].append(cost)
 			if self.has_obstacles and self.env.collision_check(obs):
+				print("COLLIDED")
 				data['collision'] = True
 		data['total_cost'] = np.sum(data['costs'])
 		data['values'] = np.cumsum(data['costs'][::-1])[::-1]

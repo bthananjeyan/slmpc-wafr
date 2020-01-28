@@ -208,10 +208,7 @@ class PointBotTeacher(object):
         }
 
     def save_demos(self, num_demos):
-        up_start_state = [START_STATE[0], START_STATE[1], START_STATE[2], START_STATE[3]]
-        down_start_state = [START_STATE[0], START_STATE[1], START_STATE[2], START_STATE[3]]
-        start_states = [START_STATE + np.random.randn(4) for _ in range(50)] + [up_start_state + np.random.randn(4) for _ in range(25)] + [down_start_state + np.random.randn(4) for _ in range(25)]
-        rollouts = [teacher.get_rollout(start_states[i]) for i in range(num_demos)]
+        rollouts = [self.get_rollout() for i in range(num_demos)]
         pickle.dump(rollouts, open( osp.join(self.outdir, "demos.p"), "wb" ) )
 
     def _get_gain(self, t):
