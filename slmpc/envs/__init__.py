@@ -15,3 +15,7 @@ register(
 register(
 	id='ReacherSparse-v0',
 	entry_point='slmpc.envs.reacher:ReacherSparse3DEnv')
+
+register(
+	id='PendulumMPC-v0',
+	entry_point='slmpc.envs.pendulum:PendulumEnv')

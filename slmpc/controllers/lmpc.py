@@ -302,7 +302,7 @@ class LMPC(Controller):
 			else:
 				costs, rollouts = self._predict_and_eval(obs, samples)
 			costs = costs.reshape(self.optimizer_params["npart"], self.optimizer_params["popsize"]).T.mean(1)
-			# print(" CEM Iteration ", i, "Cost: ", np.mean(costs), np.min(costs))
+			# print(" CEM Iteration ", i, "Cost: ", np.mean(costs), np.min(costs), rollouts[np.argmin(costs)], obs, samples[np.argmin(costs)])
 			elites = samples[np.argsort(costs)][:self.optimizer_params["num_elites"]]
 			min_costs = np.sort(costs)[:self.optimizer_params["num_elites"]]
 			# print("MAX MIN COST: ", np.max(min_costs))

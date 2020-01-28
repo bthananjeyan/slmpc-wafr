@@ -104,7 +104,7 @@ class Experiment:
 		else:
 			raise Exception("Unsupported controller.")
 
-		with open(os.path.join(self.save_dir, "config.txt"), "wb") as f:
+		with open(os.path.join(self.save_dir, "config.pkl"), "wb") as f:
 			pickle.dump(self.exp_cfg, f)
 
 	def reset(self):
