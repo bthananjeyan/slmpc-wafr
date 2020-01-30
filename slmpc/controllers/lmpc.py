@@ -396,7 +396,7 @@ class LMPC(Controller):
 				collision_check += self.cem_env.collision_check(pred_trajs[:, i])
 
 			collision_check = (collision_check > 0).astype(int)
-			costs +=  collision_check * 1e6
+			costs +=  collision_check * 1e8
 
 		if self.update_SS_and_value_func_CEM:
 			# Update data for safe set and value func
@@ -459,7 +459,7 @@ class LMPC(Controller):
 				# TODO: cleanup:
 				if self.name == "pointbot":
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [0, 2]] - np.array([desired_start[0], desired_start[2]]) )**2, axis=1)
-					# start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] )**2, axis=1) # encourage low velocities
+					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] )**2, axis=1) # encourage low velocities
 				elif self.name == "cartpole":
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [2]] - np.array([desired_start[2]]) )**2, axis=1)
 					# start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] - np.array([desired_start[1, 3]]) )**2, axis=1) # TODO: add only if needed
@@ -488,7 +488,7 @@ class LMPC(Controller):
 				collision_check += self.cem_env.collision_check(pred_trajs[:, i])
 
 			collision_check = (collision_check > 0).astype(int)
-			start_state_opt_costs +=  collision_check * 1e6
+			start_state_opt_costs +=  collision_check * 1e8
 
 		# Update data for safe set and value func
 		if self.update_SS_and_value_func_CEM:
