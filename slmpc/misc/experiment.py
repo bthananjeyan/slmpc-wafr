@@ -181,8 +181,11 @@ class Experiment:
 
 		self.all_samples.append(demo_samples)
 		self.controller.train(demo_samples)
+		for s in demo_samples:
+			print(self.env.forward_kinematics(np.array(s['states'])))
 		for i in range(self.num_iterations):
 			print("##### Iteration %d #####"%i)
+			print("GOAL", self.goal_schedule(i))
 			self.controller.set_goal(self.goal_schedule(i))
 			self.controller.save_controller_state()
 			self.env.set_goal(self.goal_schedule(i))
@@ -220,6 +223,8 @@ class Experiment:
 			print("Individual Costs:")
 			print([s['total_cost'] for s in samples])
 			print([s['states'][-1] for s in samples])
+			for s in samples:
+				print(self.env.forward_kinematics(np.array(s['states'])))
 
 			self.controller.train(samples)
 			self.controller.save_controller_state()

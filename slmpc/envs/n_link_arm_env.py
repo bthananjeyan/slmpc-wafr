@@ -54,6 +54,9 @@ class NLinkArmEnv(Env, utils.EzPickle):
             plt.ion()
             plt.show()
 
+    def get_goal_state(self):
+        return self.goal_pos
+
     def get_points(self, state):
         if len(state.shape) == 2:
             points = np.zeros((len(state), self.n_links+1, 2))
@@ -196,13 +199,19 @@ class NLinkArmEnv(Env, utils.EzPickle):
     def get_costs(self):
         return self.cost
 
-    def set_goal(self, goal_state):
+    def set_goal_state(self, goal_state):
         self.goal_state = goal_state
         self.goal_pos = self.forward_kinematics(self.goal_state)
 
+    def set_goal(self, goal_pos):
+        self.goal_pos = goal_pos
+        self.goal_state, solution_found = self.inverse_kinematics(self.start_state)
+        if not solution_found:
+            raise Exception("Invalid goal position")
+
     @property
     def goal_fn(self):
-        return euclidean_goal_fn_thresh(self.goal_pos, GOAL_THRESH)
+        return euclidean_goal_fn_thresh(self.goal_pos, GOAL_THRESH, self.forward_kinematics)
 
     def _next_state(self, s, a):
         return s + a + NOISE_SCALE * truncnorm.rvs(-1, 1, size=s.shape)
@@ -251,6 +260,7 @@ class NLinkArmEnv(Env, utils.EzPickle):
 
 
     def forward_kinematics(self, joint_angles):
+        joint_angles = np.array(joint_angles)
         if len(joint_angles.shape) == 2:
             x = np.zeros(len(joint_angles))
             y = np.zeros(len(joint_angles))
