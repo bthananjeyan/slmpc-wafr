@@ -39,14 +39,17 @@ if __name__ == "__main__":
 	# Demos from (-25, 0) for pointbot
 	# folder_name = "2020-01-27--15:05:06" # (0, 0, 0, 0, 0, 0, 0) nlinkarm fixed start
 	# folder_name = "2020-01-28--08:57:36" # (-70, 0) pointbot variable start
-	folder_name = "2020-01-28--11:24:51" # variable start nlinkarm
-
+	# folder_name = "2020-01-28--11:24:51" # variable start nlinkarm
+	folder_name = "2020-01-29--21:23:07" # variable start nlinkarm (NEW, this time planhor=15)
+	# folder_name = "2020-01-29--02:36:49" # (-60, -20) pointbot variable start
 	exp_name = "nlinkarm"
+	
 	save_file = os.path.join("logs/"+exp_name, folder_name, "costs.png")
-	upper_idx = 16
+	upper_idx = 10
 	data_folder = os.path.join("logs/"+exp_name, folder_name)
-	spacing = 4
-	plot = False
+	spacing = 1
+	plot = True
+	include_demos = True
 
 	data = pickle.load( open( os.path.join(data_folder, "samples.pkl"), "rb" ) )
 	starts = np.array(data['valid_starts'])
@@ -56,7 +59,12 @@ if __name__ == "__main__":
 	print("Demo Cost Mean: ", np.mean(cost_data_demos))
 	print("Demo Cost Std: ", np.std(cost_data_demos))
 
-	cost_data = [data['samples'][i] for i in range(1, len(starts)+1)]
+	if include_demos:
+		cost_data = [data['samples'][i] for i in range(0, len(starts)+1)]
+	else:
+		cost_data = [data['samples'][i] for i in range(1, len(starts)+1)]
+
+
 	constraint_data = [data['samples'][i] for i in range(1, len(starts)+1)]
 
 	all_cost_data = []
@@ -75,7 +83,10 @@ if __name__ == "__main__":
 	std_costs = np.std(all_cost_data, axis=1)
 	mean, ub, lb = mean_costs, mean_costs + std_costs, mean_costs - std_costs
 
-	print("STARTS", forward_kinematics(starts))
+	if exp_name == "nlinkarm" and starts[0] is not None:
+		print("STARTS", forward_kinematics(starts))
+	else:
+		print("STARTS", starts)
 	print("MEAN COSTS", mean_costs)
 	print("STD COSTS", std_costs)
 	print("IDXs", np.arange(upper_idx)[spacing-1::spacing] + 1)

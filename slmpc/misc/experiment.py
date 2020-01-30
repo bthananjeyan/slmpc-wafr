@@ -38,6 +38,7 @@ def get_sample(start_state, exp_cfg, goal_state=None):
 		'costs': []
 	}
 
+	print("GOAL STATE", goal_state)
 	local_env = gym.make(exp_cfg.env_name)
 	if exp_cfg.controller_type == "random":
 		local_controller = RandomController(exp_cfg)
@@ -53,7 +54,10 @@ def get_sample(start_state, exp_cfg, goal_state=None):
 	obs = local_env.reset()
 
 	if start_state is not None: # multi-start case
-		local_env.set_state(start_state)
+		if exp_cfg.name == "pendulum":
+			local_env.set_state(local_env.state_from_obs(start_state))
+		else:
+			local_env.set_state(start_state)
 
 	data['states'].append(obs)
 	done = False
@@ -64,7 +68,7 @@ def get_sample(start_state, exp_cfg, goal_state=None):
 		# if exp_cfg.has_obstacles:
 		# 	print(len(data['states']), obs, local_env.collision_check(obs), action, cost)
 		# else:
-		# 	print(len(data['states']), obs, action, cost)
+		# print(len(data['states']), obs, action, cost)
 		data['states'].append(obs)
 		data['actions'].append(action)
 		data['costs'].append(cost)
@@ -136,7 +140,10 @@ class Experiment:
 		obs = self.env.reset()
 
 		if start_state is not None: # multi-start case
-			self.env.set_state(start_state)
+			if self.name == "pendulum":
+				self.env.set_state(self.env.state_from_obs(start_state))
+			else:
+				self.env.set_state(start_state)
 
 		data['states'].append(obs)
 		done = False
@@ -147,7 +154,7 @@ class Experiment:
 			# if self.has_obstacles:
 			# 	print(len(data['states']), obs, self.env.collision_check(obs), action, cost)
 			# else:
-			# 	print(len(data['states']), obs, action, cost)
+			# print(len(data['states']), obs, action, cost)
 			data['states'].append(obs)
 			data['actions'].append(action)
 			data['costs'].append(cost)
@@ -183,6 +190,7 @@ class Experiment:
 		self.controller.train(demo_samples)
 		for i in range(self.num_iterations):
 			print("##### Iteration %d #####"%i)
+			print("GOAL SCHEDULE", self.goal_schedule(i))
 			self.controller.set_goal(self.goal_schedule(i))
 			self.controller.save_controller_state()
 			self.env.set_goal(self.goal_schedule(i))

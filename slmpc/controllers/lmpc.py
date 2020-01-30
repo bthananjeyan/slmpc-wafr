@@ -172,6 +172,9 @@ class LMPC(Controller):
 				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm( np.array([x[0], x[2]]) - np.array([desired_start[0], desired_start[2]]) ) )
 			elif self.name == 'cartpole':
 				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.abs( x[2] - desired_start[2] ) )
+			elif self.name == 'pendulum':
+				# sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.abs( self.cem_env.state_from_obs(x)[0] - desired_start[0]) )
+				sorted_all_safe_states = np.random.permutation(self.all_safe_states)
 			elif self.name == 'nlinkarm':
 				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm( self.cem_env.forward_kinematics(x) - self.cem_env.forward_kinematics(desired_start) ) )
 			else:
@@ -190,6 +193,8 @@ class LMPC(Controller):
 
 				if self.name == "nlinkarm":
 					print("SAMPLED START", sampled_start, " SAMPLED POS", self.cem_env.forward_kinematics(sampled_start))
+				elif self.name == "pendulum":
+					print("SAMPLED START", sampled_start, " SAMPLED TRUE STATE", self.cem_env.state_from_obs(sampled_start))
 				else:
 					print("SAMPLED START", sampled_start)
 
@@ -217,6 +222,8 @@ class LMPC(Controller):
 			
 			if self.name == "nlinkarm":
 				print("VALID START", valid_start, " VALID POS", self.cem_env.forward_kinematics(valid_start))
+			elif self.name == "pendulum":
+				print("VALID START", valid_start, " VALID TRUE STATE", self.cem_env.state_from_obs(valid_start))
 			else:
 				print("VALID START", valid_start)
 
@@ -457,7 +464,10 @@ class LMPC(Controller):
 				# TODO: cleanup:
 				if self.name == "pointbot":
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [0, 2]] - np.array([desired_start[0], desired_start[2]]) )**2, axis=1)
-					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] )**2, axis=1) # encourage low velocities
+					# start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] )**2, axis=1) # encourage low velocities
+				if self.name == "pendulum":
+					start_state_opt_costs += np.sum(( self.cem_env.state_from_obs(pred_trajs[:, i])[:, :1] - desired_start[0])**2, axis=1)
+					# TODO: Maybe encourage low velocities later...
 				elif self.name == "cartpole":
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [2]] - np.array([desired_start[2]]) )**2, axis=1)
 					# start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] - np.array([desired_start[1, 3]]) )**2, axis=1) # TODO: add only if needed

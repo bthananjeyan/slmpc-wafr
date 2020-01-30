@@ -8,6 +8,7 @@ import pickle
 from scipy.stats import truncnorm
 
 GOAL_STATE = np.array([np.cos(np.pi), np.sin(np.pi), 0])
+GOAL_STATE2 = np.array([np.cos(0), np.sin(0), 0])
 NOISE_SCALE = 0.5
 
 class PendulumEnv(gym.Env):
@@ -18,7 +19,7 @@ class PendulumEnv(gym.Env):
 
     def __init__(self, cem_env=False, g=10.0):
         self.max_speed=8
-        self.max_torque=2.
+        self.max_torque=10.
         self.dt=.05
         self.g = g
         self.m = 1.
@@ -43,6 +44,9 @@ class PendulumEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
+    def set_state(self, s):
+        self.state = s
+
     def step(self,u):
         th, thdot = self.state # th := theta
 
@@ -64,10 +68,10 @@ class PendulumEnv(gym.Env):
 
         self.state = np.array([newth, newthdot])
         self.t += 1
-        return self._get_obs(), costs, self.t >= self.horizon, {}
+        return self.get_obs(), costs, self.t >= self.horizon, {}
 
     def step_cost(self, o, u):
-        state = self._state_from_obs(o)
+        state = self.state_from_obs(o)
         return 1 - self.is_stable(state).astype(float)
 
     def _next_state(self, state, action):
@@ -89,7 +93,7 @@ class PendulumEnv(gym.Env):
         state = np.tile(s, (len(a), 1))
         trajectories = [state]
         for t in range(a.shape[1]):
-            next_state = self._next_state(self._state_from_obs(state), a[:,t].T)
+            next_state = self._next_state(self.state_from_obs(state), a[:,t].T)
             trajectories.append(next_state.T)
             state = trajectories[-1]
         costs = []
@@ -99,28 +103,27 @@ class PendulumEnv(gym.Env):
 
 
     def reset(self):
-        self.a = 34
         high = np.array([np.pi, 0])
-        self.state = self.np_random.uniform(low=high, high=high)
+        self.state = self.np_random.uniform(low=high-np.pi/8, high=high+np.pi/8)
         self.last_u = None
         self.t = 0
-        return self._get_obs()
+        return self.get_obs()
 
     def is_stable(self, s):
         if len(s.shape) == 1:
             s = s[np.newaxis,...]
-        return (np.linalg.norm(s - self._state_from_obs(self.goal_state), axis=1) < np.pi/4).astype(float)
+        return (np.linalg.norm(s - self.state_from_obs(self.goal_state), axis=1) < np.pi/4).astype(float)
 
-    def _get_obs(self):
+    def get_obs(self):
         theta, thetadot = self.state
         return np.array([np.cos(theta), np.sin(theta), thetadot])
 
-    def _obs_from_state(self, state):
+    def obs_from_state(self, state):
         if len(state.shape) == 1:
             return np.array([np.cos(state[0]), np.sin(state[0]), state[1]])
         return np.stack([np.cos(state[:,0]), np.sin(state[:,0]), state[:,1]]).T
 
-    def _state_from_obs(self, obs):
+    def state_from_obs(self, obs):
         if len(obs.shape) == 1:
             theta = angle_normalize(np.arctan2(obs[1], obs[0]))
             return np.array([theta, obs[2]])
@@ -184,12 +187,12 @@ class PendulumTeacher:
             o, c, done, _ = self.env.step(u)
             obs.append(o)
             costs.append(c)
-            assert costtt == c, (costtt, c, old, self.env._state_from_obs(old), self.env.is_stable(self.env._state_from_obs(old)).astype(float))
+            assert costtt == c, (costtt, c, old, self.env.state_from_obs(old), self.env.is_stable(self.env.state_from_obs(old)).astype(float))
             actions.append(u)
             if render:
                 self.env.render()
 
-        if self.env.is_stable(self.env._state_from_obs(obs[-2])):
+        if self.env.is_stable(self.env.state_from_obs(obs[-2])):
             assert costs[-1] == 0, costs[-1]
             stabilizable_obs = np.array(obs)
         else:

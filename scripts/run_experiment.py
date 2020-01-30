@@ -17,7 +17,7 @@ import gym
 
 def pointbot_config(exp_cfg):
 	exp_cfg.samples_per_iteration = 5
-	exp_cfg.num_iterations = 15
+	exp_cfg.num_iterations = 30
 	from slmpc.envs.pointbot_const import GOAL_STATE
 	exp_cfg.goal_schedule = NoSwitchSchedule(None, GOAL_STATE)
 	exp_cfg.save_dir = "logs/pointbot"
@@ -28,14 +28,14 @@ def pointbot_config(exp_cfg):
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 2
-	exp_cfg.parallelize_cem = False
+	exp_cfg.parallelize_cem = False # True is not supported
 	exp_cfg.parallelize_rollouts = True
 	exp_cfg.model_logdir = 'model_logs'
 	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 400, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": -5} # These kind of work for pointbot?
 	exp_cfg.n_samples_start_state_opt = 5
 	exp_cfg.start_state_opt_success_thresh = 0.6
 	exp_cfg.ss_value_train_success_thresh = 0.7
-	exp_cfg.desired_starts = [[-60, 0, -10, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
+	exp_cfg.desired_starts = [[-60, 0, -20, 0] for _ in range(exp_cfg.num_iterations)] # Placeholder for now
 	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
 	from slmpc.envs.pointbot_const import HAS_OBSTACLE
@@ -45,7 +45,7 @@ def pointbot_config(exp_cfg):
 def cartpole_config(exp_cfg):
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 3
-	exp_cfg.parallelize_cem = False
+	exp_cfg.parallelize_cem = False # True is not supported
 	exp_cfg.parallelize_rollouts = False
 	exp_cfg.save_dir = "logs/cartpole"
 	exp_cfg.demo_path = "demos/cartpole/demos.p"
@@ -67,6 +67,7 @@ def cartpole_config(exp_cfg):
 	return CartPole()
 
 def nlinkarm_config(exp_cfg):
+	exp_cfg.num_iterations = 30
 	exp_cfg.save_dir = "logs/nlinkarm"
 	exp_cfg.demo_path = "demos/nlinkarm/demos_obstacle.p"
 	exp_cfg.ss_approx_mode = "knn" # Should change to 'convex_hull'
@@ -74,12 +75,12 @@ def nlinkarm_config(exp_cfg):
 	exp_cfg.variable_start_state = True
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
-	exp_cfg.alpha_thresh = 0.25 # Use 0.25 with constraints, 0.5 without
-	exp_cfg.parallelize_cem = False
+	exp_cfg.alpha_thresh = 0.5 # Use 0.25 with constraints, 0.5 without
+	exp_cfg.parallelize_cem = False # True is not supported
 	exp_cfg.parallelize_rollouts = True
 	exp_cfg.model_logdir = 'model_logs'
 	# Used planhor=10 for fixed start, planhor=20 for variable
-	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 20, "per": 1, "alpha": 0.1, "extra_hor": -5}
+	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": -5}
 	exp_cfg.n_samples_start_state_opt = 5
 	exp_cfg.start_state_opt_success_thresh = 0.6
 	exp_cfg.ss_value_train_success_thresh = 0.7
@@ -102,7 +103,7 @@ def reacher_config(exp_cfg):
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 3
-	exp_cfg.parallelize_cem = True
+	exp_cfg.parallelize_cem = False # True is not supported
 	exp_cfg.parallelize_rollouts = False
 	exp_cfg.model_logdir = 'model_logs'
 	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 200, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": 0} # These kind of work for pointbot?
@@ -116,26 +117,39 @@ def reacher_config(exp_cfg):
 	return gym.make('ReacherSparse-v0')
 
 def inverted_pendulum_config(exp_cfg):
+	from slmpc.envs.pendulum import GOAL_STATE, GOAL_STATE2
+	exp_cfg.goal_schedule = SingleSwitchSchedule(10, [GOAL_STATE, GOAL_STATE2])
 	exp_cfg.samples_per_iteration = 5
-	exp_cfg.num_iterations = 5
+	exp_cfg.num_iterations = 40
 	exp_cfg.soln_mode = "cem"
 	exp_cfg.alpha_thresh = 3
-	exp_cfg.parallelize_cem = False
-	exp_cfg.parallelize_rollouts = False
+	exp_cfg.parallelize_cem = False # True is not supported
+	exp_cfg.parallelize_rollouts = True
 	exp_cfg.save_dir = "logs/pendulum"
 	exp_cfg.demo_path = "demos/pendulum/demos.p"
 	exp_cfg.ss_approx_mode = "knn"
-	exp_cfg.variable_start_state = False
+	exp_cfg.variable_start_state = True
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
 	exp_cfg.model_logdir = 'model_logs'
-	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": -15} # These kind of work for cartpole
+	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": 10} # These kind of work for cartpole
 	exp_cfg.n_samples_start_state_opt = 5
 	exp_cfg.start_state_opt_success_thresh = 0.6
 	exp_cfg.ss_value_train_success_thresh = 0.6
 	exp_cfg.desired_starts = []
-	for i in range(1, exp_cfg.num_iterations):
-		exp_cfg.desired_starts.append( [0.0, 0., max(np.pi/2 - float(i) * np.pi/32, np.pi/4), 0.] )
+
+	for i in range(exp_cfg.num_iterations):
+		exp_cfg.desired_starts.append( [0, 0] )
+
+	# for i in range(exp_cfg.num_iterations//4):
+	# 	exp_cfg.desired_starts.append( [np.pi + int((-1)**i)*np.pi/4 , 0] )
+	# for i in range(exp_cfg.num_iterations//4, exp_cfg.num_iterations//2):
+	# 	exp_cfg.desired_starts.append( [np.pi + int((-1)**i)*np.pi/2 , 0] )
+	# for i in range(exp_cfg.num_iterations//2, 3*exp_cfg.num_iterations//4):
+	# 	exp_cfg.desired_starts.append( [np.pi + int((-1)**i)*3*np.pi/4 , 0] )
+	# for i in range(3*exp_cfg.num_iterations//4, exp_cfg.num_iterations):
+	# 	exp_cfg.desired_starts.append( [0 , 0] )
+
 	exp_cfg.update_SS_and_value_func_CEM = False
 	exp_cfg.max_update_SS_value = 50
 	exp_cfg.has_obstacles = False
@@ -144,7 +158,7 @@ def inverted_pendulum_config(exp_cfg):
 
 def pointbot_exp1_config(exp_cfg):
 	exp_cfg.samples_per_iteration = 5
-	exp_cfg.num_iterations = 5
+	exp_cfg.num_iterations = 30
 	from slmpc.envs.pointbot_const import GOAL_STATE
 	exp_cfg.goal_schedule = NoSwitchSchedule(None, GOAL_STATE)
 
@@ -178,9 +192,9 @@ def nlinkarm_exp1_config(exp_cfg):
 
 def pendulum_exp1_config(exp_cfg):
 	exp_cfg.samples_per_iteration = 5
-	exp_cfg.num_iterations = 15
-	from slmpc.envs.pendulum import GOAL_STATE
-	exp_cfg.goal_schedule = NoSwitchSchedule(None, GOAL_STATE)
+	exp_cfg.num_iterations = 40
+	# from slmpc.envs.pendulum import GOAL_STATE
+	# exp_cfg.goal_schedule = NoSwitchSchedule(None, GOAL_STATE)
 
 
 def config(env_name, controller_type, exp_id):
