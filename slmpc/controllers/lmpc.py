@@ -5,6 +5,7 @@ import itertools
 import os
 import os.path as osp
 import pickle
+import shutil
 import time
 
 import numpy as np
@@ -243,8 +244,9 @@ class LMPC(Controller):
 		return pred_traj, 1 - invalid
 
 	def set_goal(self, goal_state):
-		if list(self.cem_env.goal_state) == list(goal_state):
+		if list(self.cem_env.get_goal_state()) == list(goal_state):
 			return
+		print("HERE", self.cem_env.get_goal_state(), goal_state)
 		# assert 0, (goal_state, self.cem_env.goal_state)
 		self.cem_env.set_goal(goal_state)
 		goal_fn = self.cem_env.goal_fn
@@ -526,6 +528,13 @@ class LMPC(Controller):
 		pickle.dump(self.all_safe_states, open(os.path.join(self.model_logdir, "all_safe_states.pkl"), "wb"))
 		# Save data for self.SS
 		pickle.dump([s.get_data() for s in self.SS], open(os.path.join(self.model_logdir, "ss_data.pkl"), "wb"))
+
+		value_models_base_dir = os.path.join(self.model_logdir, "value")
+		if osp.exists(value_models_base_dir):
+			value_folder_list = [folder for folder in os.listdir(value_models_base_dir) if folder.startswith("value")]
+			value_folder_list.sort(key=lambda value_folder: int(value_folder.split('_')[-1]))
+			for f in value_folder_list:
+				shutil.rmtree(osp.join(self.model_logdir, "value", f))
 
 		# Save self.value_funcs
 		for i, v in enumerate(self.value_funcs):

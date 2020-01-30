@@ -22,6 +22,9 @@ def process_sample_for_goal(sample, goal_fn, indicator_cost=True):
 
 	return new_sample
 
-def euclidean_goal_fn_thresh(center, thresh):
-	return lambda x: (np.linalg.norm(x - center, axis=1) < thresh).astype(float)
+def euclidean_goal_fn_thresh(center, thresh, preproc=None):
+	center = np.array(center)
+	if preproc is None:
+		preproc = lambda x: x
+	return lambda x: (np.linalg.norm(preproc(x) - center, axis=1) < thresh).astype(float)
 
