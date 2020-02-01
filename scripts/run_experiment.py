@@ -119,11 +119,11 @@ def reacher_config(exp_cfg):
 
 def inverted_pendulum_config(exp_cfg):
 	from slmpc.envs.pendulum import GOAL_STATE, GOAL_STATE2
-	exp_cfg.goal_schedule = SingleSwitchSchedule(10, [GOAL_STATE, GOAL_STATE2])
+	exp_cfg.goal_schedule = SingleSwitchSchedule(5, [GOAL_STATE, GOAL_STATE2])
 	exp_cfg.samples_per_iteration = 5
 	exp_cfg.num_iterations = 40
 	exp_cfg.soln_mode = "cem"
-	exp_cfg.alpha_thresh = 3
+	exp_cfg.alpha_thresh = 2
 	exp_cfg.parallelize_cem = False # True is not supported
 	exp_cfg.parallelize_rollouts = True
 	exp_cfg.save_dir = "logs/pendulum"

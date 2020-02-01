@@ -43,7 +43,6 @@ def create_value_function_new_goal(v_old, goal_fn, dO):
 		state_data.append(new_sample['states'])
 		value_data.append(new_sample['values'])
 		cost_data.append(new_sample['costs'])
-	print(len(state_data), [len(s) for s in state_data])
 	if len(state_data) == 0:
 		return None
 	return ValueFunc(v_old.approx_mode, dO, load_model=False, model_dir=None, state_data=state_data, value_data=value_data, cost_data=cost_data)
@@ -98,6 +97,7 @@ class ValueFunc:
 		self.model_fit = True
 		self.value_fit_data = np.concatenate(self.value_data, axis=0)
 		state_fit_data = [s[:-1] for s in self.state_data]
+		# print("STATE FIT DATA", state_fit_data)
 		self.state_fit_data = np.concatenate(state_fit_data, axis=0)
 
 		if self.approx_mode == "linear":

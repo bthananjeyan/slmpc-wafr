@@ -7,9 +7,12 @@ import os
 import pickle
 from scipy.stats import truncnorm
 
+from slmpc.controllers.utils import euclidean_goal_fn_thresh
+
 GOAL_STATE = np.array([np.cos(np.pi), np.sin(np.pi), 0])
 GOAL_STATE2 = np.array([np.cos(0), np.sin(0), 0])
 NOISE_SCALE = 0.5
+GOAL_THRESH = np.pi/4
 
 class PendulumEnv(gym.Env):
     metadata = {
@@ -19,7 +22,7 @@ class PendulumEnv(gym.Env):
 
     def __init__(self, cem_env=False, g=10.0):
         self.max_speed=8
-        self.max_torque=10.
+        self.max_torque=2.
         self.dt=.05
         self.g = g
         self.m = 1.
@@ -36,6 +39,7 @@ class PendulumEnv(gym.Env):
         self.goal_state = GOAL_STATE
         self.env_name = 'PendulumMPC-v0'
         self.name = 'pendulum'
+        self.goal_thresh = GOAL_THRESH
 
 
         self.seed()
@@ -112,7 +116,12 @@ class PendulumEnv(gym.Env):
     def is_stable(self, s):
         if len(s.shape) == 1:
             s = s[np.newaxis,...]
-        return (np.linalg.norm(s - self.state_from_obs(self.goal_state), axis=1) < np.pi/4).astype(float)
+
+        angles = s[:, :0]
+        first = np.linalg.norm(angles - self.state_from_obs(self.goal_state)[0], axis=1)
+        second = np.linalg.norm( (2*np.pi - angles) - self.state_from_obs(self.goal_state)[0], axis=1)
+        res = np.minimum(first, second)
+        return (res < self.goal_thresh).astype(float)
 
     def get_obs(self):
         theta, thetadot = self.state
@@ -124,6 +133,7 @@ class PendulumEnv(gym.Env):
         return np.stack([np.cos(state[:,0]), np.sin(state[:,0]), state[:,1]]).T
 
     def state_from_obs(self, obs):
+        obs = np.array(obs)
         if len(obs.shape) == 1:
             theta = angle_normalize(np.arctan2(obs[1], obs[0]))
             return np.array([theta, obs[2]])
@@ -132,7 +142,14 @@ class PendulumEnv(gym.Env):
         return out
 
     def set_goal(self, goal):
-        return
+        self.goal_state = goal
+
+    @property
+    def goal_fn(self):
+        return euclidean_goal_fn_thresh(self.state_from_obs(self.goal_state), self.goal_thresh, preproc=self.state_from_obs, name=self.name)
+
+    def get_goal_state(self):
+        return self.goal_state
 
     def render(self, mode='human'):
 
@@ -166,7 +183,7 @@ class PendulumEnv(gym.Env):
             self.viewer = None
 
 def angle_normalize(x):
-    return (((x+2 *np.pi) % (2*np.pi)))
+    return ((x+2 *np.pi) % (2*np.pi))
 
 class PendulumTeacher:
 
@@ -212,7 +229,7 @@ class PendulumTeacher:
         data = [self.sample() for _ in range(num_demos)]
         if not os.path.exists(self.outdir):
             os.makedirs(self.outdir)
-        print(data)
+        # print(data)
         with open(path.join(self.outdir, "demos.p"), "wb") as f:
             pickle.dump(data, f)
 

@@ -22,9 +22,20 @@ def process_sample_for_goal(sample, goal_fn, indicator_cost=True):
 
 	return new_sample
 
-def euclidean_goal_fn_thresh(center, thresh, preproc=None):
+def euclidean_goal_fn_thresh(center, thresh, preproc=None, name=None):
 	center = np.array(center)
 	if preproc is None:
 		preproc = lambda x: x
-	return lambda x: (np.linalg.norm(preproc(x) - center, axis=1) < thresh).astype(float)
+	if name == "pendulum":
+		return lambda x: euclidean_func(x, goal_state=center, goal_thresh=thresh)
+	else:
+		return lambda x: (np.linalg.norm(preproc(x) - center, axis=1) < thresh).astype(float)
+
+def euclidean_func(x, goal_state, goal_thresh):
+	x = np.array(x)
+	angles = x[:, :0]
+	first = np.linalg.norm(angles - goal_state[0], axis=1)
+	second = np.linalg.norm( (2*np.pi - angles) - goal_state[0], axis=1)
+	res = np.minimum(first, second)
+	return (res < goal_thresh).astype(float)
 

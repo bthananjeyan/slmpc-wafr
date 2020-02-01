@@ -174,8 +174,8 @@ class LMPC(Controller):
 			elif self.name == 'cartpole':
 				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.abs( x[2] - desired_start[2] ) )
 			elif self.name == 'pendulum':
-				# sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.abs( self.cem_env.state_from_obs(x)[0] - desired_start[0]) )
-				sorted_all_safe_states = np.random.permutation(self.all_safe_states)
+				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: min(np.abs( self.cem_env.state_from_obs(x)[0] - desired_start[0]), np.abs( 2 * np.pi - self.cem_env.state_from_obs(x)[0] - desired_start[0]))  )
+				# sorted_all_safe_states = np.random.permutation(self.all_safe_states)
 			elif self.name == 'nlinkarm':
 				sorted_all_safe_states = sorted( self.all_safe_states, key=lambda x: np.linalg.norm( self.cem_env.forward_kinematics(x) - self.cem_env.forward_kinematics(desired_start) ) )
 			else:
@@ -246,7 +246,7 @@ class LMPC(Controller):
 	def set_goal(self, goal_state):
 		if list(self.cem_env.get_goal_state()) == list(goal_state):
 			return
-		print("HERE", self.cem_env.get_goal_state(), goal_state)
+		print("GOAL STATE", goal_state)
 		# assert 0, (goal_state, self.cem_env.goal_state)
 		self.cem_env.set_goal(goal_state)
 		goal_fn = self.cem_env.goal_fn
@@ -264,6 +264,7 @@ class LMPC(Controller):
 			if nss is not None:
 				new_ss.append(nss)
 		self.SS = new_ss
+
 		self.value_ss_approx_models =[]
 		for ss in self.SS:
 			if self.ss_approx_mode == "convex_hull":
@@ -280,7 +281,7 @@ class LMPC(Controller):
 					self.value_ss_approx_models.append(None)
 
 			else:
-				raise("Unsupported SS Approx Mode")
+				raise Exception("Unsupported SS Approx Mode")
 
 		all_safe_states = list(itertools.chain.from_iterable([s.state_data for s in self.SS]))
 		self.all_safe_states= list(itertools.chain.from_iterable(all_safe_states))
@@ -290,7 +291,7 @@ class LMPC(Controller):
 		elif self.ss_approx_mode == "convex_hull":
 			self.ss_approx_model = Delaunay(self.all_safe_states)
 		else:
-			raise("Unsupported SS Approx Mode")
+			raise Exception("Unsupported SS Approx Mode")
 
 
 	def run_cem(self, obs, mean, var, traj_opt_mode=False, desired_start=None):
@@ -468,7 +469,10 @@ class LMPC(Controller):
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [0, 2]] - np.array([desired_start[0], desired_start[2]]) )**2, axis=1)
 					# start_state_opt_costs += np.sum((pred_trajs[:, i][:, [1, 3]] )**2, axis=1) # encourage low velocities
 				if self.name == "pendulum":
-					start_state_opt_costs += np.sum(( self.cem_env.state_from_obs(pred_trajs[:, i])[:, :1] - desired_start[0])**2, axis=1)
+					first = np.sum(( self.cem_env.state_from_obs(pred_trajs[:, i])[:, :1] - desired_start[0])**2, axis=1)
+					second = np.sum(( (2*np.pi - self.cem_env.state_from_obs(pred_trajs[:, i])[:, :1] ) - desired_start[0])**2, axis=1)
+					res = np.minimum(first, second)
+					start_state_opt_costs += res
 					# TODO: Maybe encourage low velocities later...
 				elif self.name == "cartpole":
 					start_state_opt_costs += np.sum((pred_trajs[:, i][:, [2]] - np.array([desired_start[2]]) )**2, axis=1)

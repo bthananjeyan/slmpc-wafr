@@ -39,13 +39,17 @@ if __name__ == "__main__":
 	# Demos from (-25, 0) for pointbot
 	# folder_name = "2020-01-27--15:05:06" # (0, 0, 0, 0, 0, 0, 0) nlinkarm fixed start
 	# folder_name = "2020-01-28--08:57:36" # (-70, 0) pointbot variable start
-	# folder_name = "2020-01-28--11:24:51" # variable start nlinkarm
-	folder_name = "2020-01-29--21:23:07" # variable start nlinkarm (NEW, this time planhor=15)
+	# folder_name = "2020-01-28--11:24:51" # variable start nlinkarm (BAD OLD ONE)
+	# folder_name = "2020-01-29--21:23:07" # variable start nlinkarm (NEW, this time planhor=15)
 	# folder_name = "2020-01-29--02:36:49" # (-60, -20) pointbot variable start
-	exp_name = "nlinkarm"
+	folder_name = "2020-02-01--12:31:32"
+
+	# exp_name = "nlinkarm"
+	exp_name = "pendulum"
 	
 	save_file = os.path.join("logs/"+exp_name, folder_name, "costs.png")
-	upper_idx = 10
+	# upper_idx = 10
+	upper_idx = 40
 	data_folder = os.path.join("logs/"+exp_name, folder_name)
 	spacing = 1
 	plot = True
@@ -93,9 +97,12 @@ if __name__ == "__main__":
 
 	if plot:
 		plot_mean_and_CI(mean, ub, lb, 'b', 'b')
-		plt.title("N-Link Arm: Mean Trajectory Cost vs. Iteration")
-		plt.xlabel("Iteration")
-		plt.ylabel("Trajectory Cost")
+		plt.title("N-Link Arm: Mean Trajectory Cost vs. Iteration", fontsize=18)
+		plt.xlabel("Iteration", fontsize=18)
+		plt.ylabel("Trajectory Cost", fontsize=18)
+		plt.tick_params(axis = 'both', which = 'major', labelsize = 14)
+		plt.ylim(bottom=0, top=50)
+		plt.xlim(left=0, right=10)
 		plt.savefig(save_file)
 		plt.clf()
 
