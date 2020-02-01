@@ -33,7 +33,7 @@ def euclidean_goal_fn_thresh(center, thresh, preproc=None, name=None):
 
 def euclidean_func(x, goal_state, goal_thresh):
 	x = np.array(x)
-	angles = x[:, :0]
+	angles = x[:, :1]
 	first = np.linalg.norm(angles - goal_state[0], axis=1)
 	second = np.linalg.norm( (2*np.pi - angles) - goal_state[0], axis=1)
 	res = np.minimum(first, second)

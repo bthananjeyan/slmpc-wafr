@@ -42,7 +42,7 @@ if __name__ == "__main__":
 	# folder_name = "2020-01-28--11:24:51" # variable start nlinkarm (BAD OLD ONE)
 	# folder_name = "2020-01-29--21:23:07" # variable start nlinkarm (NEW, this time planhor=15)
 	# folder_name = "2020-01-29--02:36:49" # (-60, -20) pointbot variable start
-	folder_name = "2020-02-01--12:31:32"
+	folder_name = "2020-02-01--13:11:10"
 
 	# exp_name = "nlinkarm"
 	exp_name = "pendulum"

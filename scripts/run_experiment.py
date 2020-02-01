@@ -119,7 +119,7 @@ def reacher_config(exp_cfg):
 
 def inverted_pendulum_config(exp_cfg):
 	from slmpc.envs.pendulum import GOAL_STATE, GOAL_STATE2
-	exp_cfg.goal_schedule = SingleSwitchSchedule(5, [GOAL_STATE, GOAL_STATE2])
+	exp_cfg.goal_schedule = SingleSwitchSchedule(10, [GOAL_STATE, GOAL_STATE2])
 	exp_cfg.samples_per_iteration = 5
 	exp_cfg.num_iterations = 40
 	exp_cfg.soln_mode = "cem"
@@ -133,7 +133,7 @@ def inverted_pendulum_config(exp_cfg):
 	exp_cfg.variable_start_state_cost = "towards" # options are [indicator, nearest_neighbor, towards]
 	exp_cfg.value_approx_mode = "pe" # could be linear too, but I am pretty sure knn is better
 	exp_cfg.model_logdir = 'model_logs'
-	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": 10} # These kind of work for cartpole
+	exp_cfg.optimizer_params = {"num_iters": 5, "popsize": 600, "npart": 1, "num_elites": 40, "plan_hor": 15, "per": 1, "alpha": 0.1, "extra_hor": 0} # These kind of work for cartpole
 	exp_cfg.n_samples_start_state_opt = 5
 	exp_cfg.start_state_opt_success_thresh = 0.6
 	exp_cfg.ss_value_train_success_thresh = 0.6

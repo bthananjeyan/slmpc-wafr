@@ -117,7 +117,7 @@ class PendulumEnv(gym.Env):
         if len(s.shape) == 1:
             s = s[np.newaxis,...]
 
-        angles = s[:, :0]
+        angles = s[:, :1]
         first = np.linalg.norm(angles - self.state_from_obs(self.goal_state)[0], axis=1)
         second = np.linalg.norm( (2*np.pi - angles) - self.state_from_obs(self.goal_state)[0], axis=1)
         res = np.minimum(first, second)
